@@ -1,0 +1,360 @@
+-- vim: syntax=moon
+fs = require 'fs'
+moonscript = require 'moonscript'
+package.path = "#{package.path};lib/?.lua;lib/?/init.lua"
+package.moonpath = moonscript.create_moonpath(package.path)
+insert: append = table
+load_spookfile = _G.load_spookfile
+sdlog = require 'systemd-journal'
+_G.log = sdlog
+log = _G.log
+
+-- How much log output can you handle? (ERR, WARN, INFO, DEBUG)
+log_level "ERR"
+
+-- We don't want buffered io on stdout here
+io.stdout\setvbuf 'no'
+
+Types = require("syscall").t
+:execute, :command = require 'command'
+
+spook = _G.spook
+after = (interval, func) ->
+  timer = spook\timer interval, (t) -> func!
+  timer\start!
+
+json = require "json"
+normal_color = "#FFFFFF"
+warning_color = "#FFFC00"
+critical_color = "#FF0000"
+good_color = "#4CBB17"
+
+-- begin infinite i3 json stream
+-- wrap it in a guard so that on spook
+-- hot reload we don't output this again
+unless _G.INIT
+  io.stdout\write '{"version":1,"click_events":true}', "\n"
+  io.stdout\write "[[]", "\n"
+  _G.INIT = true
+
+:block, :blocklist, :named_blocks, :clear_blocklist = require 'block'
+
+write_blocks = ->
+  data = [block\to_table! for block in *blocklist]
+  io.stdout\write ",#{json.encode(data)}", "\n"
+
+net_throughput = require "net_throughput"
+block 'Bandwidth', ->
+  net_if = net_throughput!
+  interval 1.0
+  on_update =>
+    status, err = net_if!
+    return unless status
+
+    unless net_if.up
+      color critical_color
+      text " net down"
+      return
+
+    if net_if.interface\match '^wlp'
+      label " "
+    else
+      label " "
+
+    color normal_color
+    text " #{net_if.receive_rate}#{net_if.rx_unit}  #{net_if.transmit_rate}#{net_if.tx_unit}"
+
+block 'Date', ->
+  interval 1.0
+  label " "
+  color normal_color
+  on_update =>
+    text os.date("%b-%d %H:%M:%S")
+  on_left_click =>
+    os.execute "gsimplecal &"
+
+block 'External IP', ->
+  ip = 'Unknown'
+  color normal_color
+  label " "
+  interval 30.0
+
+  on_update =>
+    success, output = pcall command, "/usr/bin/dig TXT +short o-o.myaddr.l.google.com @ns1.google.com"
+    log.debug "dig: #{output}"
+    return unless success
+    ip = (output\gsub('"',''))\trim!
+    text (ip != '' and ip or 'Unknown')
+
+  on_left_click =>
+    color warning_color
+    text "<copied>"
+    os.execute "echo '#{ip}' | xclip -selection clipboard"
+    after 1.0, (t) ->
+      color normal_color
+      text ip
+
+cpu_usage = require "cpu_usage"
+block 'Cpu Usage', ->
+  cpu = cpu_usage!
+  text "0%"
+  label " "
+  interval 2.0
+  on_update =>
+    cpu = cpu_usage!
+    if cpu < 50
+      color normal_color
+    else if cpu < 70
+      color warning_color
+    else
+      color critical_color
+    text "#{cpu}%"
+
+if fs.is_present '/usr/bin/acpi'
+  battery_acpi = require 'battery_acpi'
+  block 'Battery', ->
+    local time_remaining, alert_sent
+    percent = 100
+    status = 'charging'
+    batt100   = ' '
+    batt75    = ' '
+    batt50    = ' '
+    batt25    = ' '
+    batt0     = ' '
+    charging  = ' '
+    interval 15.0
+    on_update =>
+      success, output = pcall command, '/usr/bin/acpi -b'
+      log.debug "acpi: #{output}"
+      return unless success
+
+      status, percent, time_remaining = battery_acpi output
+      return unless status
+
+      color normal_color
+      tr = time_remaining and " (#{time_remaining})" or ''
+      text "#{percent}% #{tr}"
+
+      if status == 'discharging'
+        if percent < 10
+          unless alert_sent
+            alert_sent = true
+            os.execute "/usr/bin/notify-send 'Low Battery' 'There is only #{time_remaining} of use left'"
+          color critical_color
+          label batt0
+        else if percent < 25
+          color warning_color
+          label batt25
+        else if percent < 50
+          color warning_color
+          label tt25
+        else if percent < 75
+          label batt75
+        else
+          label batt100
+      else if status == 'charging'
+        alert_sent = false
+        color good_color
+        label charging
+
+if fs.is_present '/usr/bin/xrandr'
+  block "Monitor", ->
+    interval 30.0
+    label ' '
+    symbol = ""
+
+    on_update =>
+      success, output = pcall command, '/usr/bin/xrandr -q'
+      log.debug "xrandr: #{output}"
+      return unless output
+
+      for line in *output\split("\n")
+        if line\match '^DP1'
+          if line\match '%d+mm'
+            text symbol
+            return
+      text 'OFF'
+
+if fs.is_present '/usr/bin/pacman'
+  updates = 0
+  watch_temporarily_disabled = false
+  update_block = block 'Updates', ->
+    color normal_color
+    interval 30.0 * 60 -- 30 minutes
+
+    on_update =>
+      color good_color
+      label ''
+      text "Checking for updates..."
+      success, stdout, stderr, status = pcall execute, '/usr/bin/pacman -Qu'
+      log.debug "success: #{success}, pacman: #{stdout}, ERR: #{stderr}, STATUS: #{status}"
+      unless success
+        text "Error checking for updates"
+        color critical_color
+        return
+      updates = if status > 0
+        0
+      else
+        lines = #(stdout\trim!\split("\n"))
+        tonumber(lines) or 0
+
+      if updates > 0
+        label ' '
+        color warning_color
+        text "#{updates} updates available"
+      else
+        label ' '
+        color normal_color
+        text "No updates available"
+
+    on_left_click =>
+      watch_temporarily_disabled = true
+      if updates > 0
+        success, stdout, stderr, status = pcall execute, "/usr/bin/gnome-terminal -e 'sudo pacman -Syu'"
+        @update!
+      else
+        @update!
+      watch_temporarily_disabled = false
+
+if fs.is_present '/usr/lib/update-notifier/apt-check'
+  updates = 0
+  watch_temporarily_disabled = false
+  update_block = block 'Updates', ->
+    color normal_color
+    interval 30.0 * 60 -- 30 minutes
+
+    on_update =>
+      color good_color
+      label ''
+      text "Checking for updates..."
+      success, output = pcall command, '/usr/lib/update-notifier/apt-check --human-readable'
+      log.debug "apt-check: #{output}"
+      return unless success
+
+      updates = output\match("^%d+")
+      updates = updates and tonumber(updates) or 0
+
+      if updates > 0
+        label ' '
+        color warning_color
+        text "#{updates} updates available"
+      else
+        label ' '
+        color normal_color
+        text "No updates available"
+
+    on_left_click =>
+      watch_temporarily_disabled = true
+      if updates > 0
+        command '/usr/bin/update-manager'
+        @update!
+      else
+        @update!
+      watch_temporarily_disabled = false
+
+Pulse = require "pulse"
+round = math.round
+sinklist = Pulse\list_sinks!
+pulse_blocks = {}
+update_pulse_blocks = -> block\update! for block in *pulse_blocks
+for sink in *sinklist
+  name = if sink.name\match '^bluez'
+    'BT'
+  else
+    n = sink.name\split('.')
+    name = n[#n]
+    name = name\split('-')
+    name[1]\upper!
+  b = block "Volume #{name}", ->
+    pulse = Pulse.new sink
+    step = 0.02
+    interval 5.0
+    label "♪ #{name} "
+    text '?'
+
+    on_update =>
+
+      muted = pulse.mute
+      current = pulse.is_current
+      if muted
+        text "mute"
+      else
+        text "#{round(pulse.volume * 100)}%"
+
+      if current and muted
+        color warning_color
+      else if current
+        color good_color
+      else
+        color normal_color
+
+    on_left_click =>
+      log.error "left_click curr: #{pulse.is_current}"
+      if pulse.is_current
+        log.error "left_click toggle mute"
+        pulse\toggle_mute!
+        @update!
+      else
+        log.error "left_click make current"
+        pulse\make_current!
+        update_pulse_blocks! -- all volume blocks including self
+      write_blocks! -- for the best possible feedback
+
+    on_scroll_up =>
+      pulse.volume = pulse.volume + step
+      @update!
+      write_blocks! -- for the best possible feedback
+
+    on_scroll_down =>
+      pulse.volume = pulse.volume - step
+      @update!
+      write_blocks! -- for the best possible feedback
+
+  append pulse_blocks, b
+
+-- Let's reload this file when changing it, therefore
+-- spook itself can be reconfigured without restarting it.
+watch_file 'Spookfile', ->
+  on_changed (event) ->
+    clear_blocklist!
+    load_spookfile!
+
+write_blocks!
+
+json_writer = timer 0.5, (t) ->
+  write_blocks!
+  t\again!
+
+stdin = Types.fd(0) -- MUST be wrapped in a metatype
+stdin_reader = on_read stdin, (r, fd) ->
+  data = fd\read!
+  if data
+    line, replaced = data\gsub '^%[', ''
+    line, replaced = line\gsub '^,', ''
+    status, event = pcall json.decode, line
+    if status
+      log.error "GOT EVENT "
+      log.error event
+      return unless event.name
+      block = named_blocks[event.name]
+      return unless block
+      switch event.button
+        when 1
+          block.left_click event
+          write_blocks!
+        when 2
+          block.middle_click event
+          write_blocks!
+        when 3
+          block.right_click event
+          write_blocks!
+        when 4
+          block.scroll_up event
+          write_blocks!
+        when 5
+          block.scroll_down event
+          write_blocks!
+
+-- Just throwing in this call to better catch
+-- issues stemming from GC
+collectgarbage!
