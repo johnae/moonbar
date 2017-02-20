@@ -319,6 +319,15 @@ watch_file 'Spookfile', ->
     clear_blocklist!
     load_spookfile!
 
+i3conf = "#{os.getenv('HOME')}/.i3"
+genconf = "#{i3conf}/genconf"
+restart_i3 = "/usr/local/bin/restart-i3"
+
+watch "#{os.getenv('HOME')}/.i3", ->
+  on_changed '(.*config%..*)', (event, name) ->
+    os.execute genconf
+    os.execute restart_i3
+
 write_blocks!
 
 json_writer = timer 0.5, (t) ->
