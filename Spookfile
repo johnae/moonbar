@@ -98,8 +98,11 @@ block 'Pomodoro', ->
       curr = pomodoro[pomodoro_current]
       time, work = curr[1], curr[2]
       if work
+        label " "
         text "Pomodoro: work"
       else
+        -- we shouldn't ever get here as it is
+        label " "
         text "Pomodoro: break"
       color normal_color
 
