@@ -320,6 +320,14 @@ round = math.round
 sinklist = Pulse\list_sinks!
 pulse_blocks = {}
 update_pulse_blocks = -> block\update! for block in *pulse_blocks
+
+sinkupdater = timer 5.0, (t) ->
+  current_sink_list = Pulse\list_sinks!
+  if #current_sink_list != #sinklist
+    clear_blocklist!
+    load_spookfile!
+  t\again!
+
 for sink in *sinklist
   name = if sink.name\match '^bluez'
     'BT'
