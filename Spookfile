@@ -5,9 +5,8 @@ package.path = "#{package.path};lib/?.lua;lib/?/init.lua"
 package.moonpath = moonscript.create_moonpath(package.path)
 insert: append = table
 load_spookfile = _G.load_spookfile
-sdlog = require 'systemd-journal'
-_G.log = sdlog
-log = _G.log
+log = require 'systemd-journal'
+_G.log = log
 
 -- How much log output can you handle? (ERR, WARN, INFO, DEBUG)
 log_level "ERR"
