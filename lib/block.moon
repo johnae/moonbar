@@ -1,6 +1,6 @@
 def = require'classy'.define
-spook = _G.spook
 log = _G.log
+:after = require 'moonbar_util'
 
 -- this is the table of i3 bar info, each
 -- block adds itself to this table
@@ -125,7 +125,7 @@ block = (name, setup) ->
   b = Block.new name
   setfenv setup, b.block_env
   setup!
-  b\update!
+  after 0.1, (t) -> b\update!
   b
 
 :block, :blocklist, :named_blocks, :clear_blocklist

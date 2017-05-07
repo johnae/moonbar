@@ -7,6 +7,7 @@ insert: append = table
 load_spookfile = _G.load_spookfile
 log = require 'systemd-journal'
 _G.log = log
+:after = require 'moonbar_util'
 
 -- How much log output can you handle? (ERR, WARN, INFO, DEBUG)
 log_level "ERR"
@@ -16,11 +17,6 @@ io.stdout\setvbuf 'no'
 
 Types = require("syscall").t
 :execute, :command = require 'command'
-
-spook = _G.spook
-after = (interval, func) ->
-  timer = spook\timer interval, (t) -> func!
-  timer\start!
 
 json = require "json"
 normal_color = "#FFFFFF"
@@ -122,6 +118,7 @@ if fs.is_present(rbsnap) and remote
       label ''
       text "Backing up /home..."
       start = os.time!
+      stamp = os.date '%H:%M'
       success, output = pcall command, "/usr/bin/sudo #{rbsnap} #{backup} #{remote} #{port}"
       finish = os.time!
       elapsed = finish - start
@@ -133,7 +130,7 @@ if fs.is_present(rbsnap) and remote
       log.debug "success: #{success}, rbsnap: #{output}"
       after 5.0, (t) ->
         color normal_color
-        text "Backup"
+        text "Backup (last: #{stamp})"
       if success
         os.execute "/usr/bin/notify-send -i #{backup_complete_icon} 'Backup' 'Backup of #{backup} to #{remote} finished in #{time_taken}.'"
         text "Backup succeeded"
