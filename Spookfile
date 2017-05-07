@@ -105,6 +105,38 @@ block 'Pomodoro', ->
         text "Pomodoro: break"
       color normal_color
 
+backup_complete_icon = "#{os.getenv('HOME')}/Pictures/icons/essential/cloud-computing-2.svg"
+backup_fail_icon = "#{os.getenv('HOME')}/Pictures/icons/essential/cloud-computing-5.svg"
+rbsnap = "#{os.getenv('HOME')}/Local/bin/rbsnap"
+backup = "/home"
+remote = os.getenv('RBSNAP_REMOTE')
+port = os.getenv('RBSNAP_PORT')
+if fs.is_present(rbsnap) and remote
+  block 'Backup', ->
+    text "Backup"
+    color normal_color
+    interval 30.0 * 60 -- 30 minutes
+
+    on_update =>
+      color good_color
+      label ''
+      text "Backing up /home..."
+      success, output = pcall command, "/usr/bin/sudo #{rbsnap} #{backup} #{remote} #{port}"
+      log.debug "success: #{success}, rbsnap: #{output}"
+      after 5.0, (t) ->
+        color normal_color
+        text "Backup"
+      if success
+        os.execute "/usr/bin/notify-send -i #{backup_complete_icon} 'Backup' 'Backup of #{backup} to #{remote} finished'"
+        text "Backup succeeded"
+        color good_color
+      else
+        os.execute "/usr/bin/notify-send -i #{backup_fail_icon} -u critical 'Backup' 'Backup of #{backup} to #{remote} failed!'"
+        text "Backup failed"
+        color critical_color
+
+    on_left_click => @update!
+
 net_throughput = require "net_throughput"
 block 'Bandwidth', ->
   net_if = net_throughput!
