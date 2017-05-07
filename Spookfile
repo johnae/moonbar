@@ -121,17 +121,25 @@ if fs.is_present(rbsnap) and remote
       color good_color
       label ''
       text "Backing up /home..."
+      start = os.time!
       success, output = pcall command, "/usr/bin/sudo #{rbsnap} #{backup} #{remote} #{port}"
+      finish = os.time!
+      elapsed = finish - start
+      time_taken = if elapsed == 1
+        "#{elapsed} second"
+      else
+        "#{elapsed} seconds"
+      
       log.debug "success: #{success}, rbsnap: #{output}"
       after 5.0, (t) ->
         color normal_color
         text "Backup"
       if success
-        os.execute "/usr/bin/notify-send -i #{backup_complete_icon} 'Backup' 'Backup of #{backup} to #{remote} finished'"
+        os.execute "/usr/bin/notify-send -i #{backup_complete_icon} 'Backup' 'Backup of #{backup} to #{remote} finished in #{time_taken}.'"
         text "Backup succeeded"
         color good_color
       else
-        os.execute "/usr/bin/notify-send -i #{backup_fail_icon} -u critical 'Backup' 'Backup of #{backup} to #{remote} failed!'"
+        os.execute "/usr/bin/notify-send -i #{backup_fail_icon} -u critical 'Backup' 'Backup of #{backup} to #{remote} failed in #{time_taken}!'"
         text "Backup failed"
         color critical_color
 
