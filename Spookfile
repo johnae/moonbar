@@ -239,7 +239,6 @@ if fs.is_present '/usr/bin/xrandr'
 
 if fs.is_present '/usr/bin/pacman'
   updates = 0
-  watch_temporarily_disabled = false
   update_block = block 'Updates', ->
     color normal_color
     interval 30.0 * 60 -- 30 minutes
@@ -270,17 +269,14 @@ if fs.is_present '/usr/bin/pacman'
         text "No updates available"
 
     on_left_click =>
-      watch_temporarily_disabled = true
       if updates > 0
         success, stdout, stderr, status = pcall execute, "/usr/bin/gnome-terminal -e 'sudo pacman -Syu'"
         @update!
       else
         @update!
-      watch_temporarily_disabled = false
 
 if fs.is_present '/usr/lib/update-notifier/apt-check'
   updates = 0
-  watch_temporarily_disabled = false
   update_block = block 'Updates', ->
     color normal_color
     interval 30.0 * 60 -- 30 minutes
@@ -306,13 +302,11 @@ if fs.is_present '/usr/lib/update-notifier/apt-check'
         text "No updates available"
 
     on_left_click =>
-      watch_temporarily_disabled = true
       if updates > 0
         command '/usr/bin/update-manager'
         @update!
       else
         @update!
-      watch_temporarily_disabled = false
 
 Pulse = require "pulse"
 round = math.round
