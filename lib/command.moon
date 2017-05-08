@@ -15,10 +15,9 @@ stdio_pipes = ->
 
 close_all = (...) -> stream\close! for stream in *{...}
 
---
 read = (fd, count = 4096) -> ->
   bytes, err = fd\read nil, count
-  return -1, err if err
+  return bytes, err if err
   return nil if #bytes == 0
   bytes
 
@@ -51,9 +50,7 @@ execute = (cmdline) ->
       for bytes, err in read(fd)
         return if err and err.again
         error err if err
-        unless out_data
-          out_data = bytes
-          continue
+        out_data = "" unless out_data
         out_data ..= bytes
       r\stop!
       out_read\close!
@@ -64,9 +61,7 @@ execute = (cmdline) ->
       for bytes, err in read(fd)
         return if err and err.again
         error err if err
-        unless err_data
-          err_data = bytes
-          continue
+        err_data = "" unless err_data
         err_data ..= bytes
       r\stop!
       err_read\close!
