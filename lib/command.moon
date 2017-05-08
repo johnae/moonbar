@@ -18,7 +18,7 @@ close_all = (...) -> stream\close! for stream in *{...}
 --
 read = (fd, count = 4096) -> ->
   bytes, err = fd\read nil, count
-  error err if bytes == -1 -- weird return type (as mentioned in ljsyscall) - either a string or -1
+  return -1, err if err
   return nil if #bytes == 0
   bytes
 
@@ -42,23 +42,34 @@ execute = (cmdline) ->
     error "Oopsie - exec error, perhaps #{cmd} can't be found?"
 
   parent = (child_pid) ->
-    local err_data
+    local err_data, out_data
     close_all in_read, in_write, out_write, err_write
+    out_read\nonblock!
+    err_read\nonblock!
 
     out = Read.new out_read, (r, fd) ->
-      data = ""
-      data ..= bytes for bytes in read(fd)
+      for bytes, err in read(fd)
+        return if err and err.again
+        error err if err
+        unless out_data
+          out_data = bytes
+          continue
+        out_data ..= bytes
       r\stop!
       out_read\close!
       _, _, status = S.waitpid child_pid
-      coroutine.resume thread, data, err_data, tonumber(status.status)
+      coroutine.resume thread, out_data, err_data, tonumber(status.status)
 
     err = Read.new err_read, (r, fd) ->
-      data = ""
-      data ..= bytes for bytes in read(fd)
+      for bytes, err in read(fd)
+        return if err and err.again
+        error err if err
+        unless err_data
+          err_data = bytes
+          continue
+        err_data ..= bytes
       r\stop!
       err_read\close!
-      err_data = data
 
     out\start!
     err\start!
