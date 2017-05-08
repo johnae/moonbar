@@ -3,4 +3,6 @@ after = (interval, func) ->
   timer = spook\timer interval, (t) -> func!
   timer\start!
 
-:after
+coro = (func, ...) -> coroutine.wrap(func) ...
+
+:after, :coro
