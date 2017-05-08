@@ -1,13 +1,11 @@
 def = require'classy'.define
 log = _G.log
-:after = require 'moonbar_util'
+:after, :coro = require 'moonbar_util'
 
 -- this is the table of i3 bar info, each
 -- block adds itself to this table
 blocklist = {}
 named_blocks = {}
-
-coro = (func) -> coroutine.wrap(func)
 
 clear_blocklist = ->
   for k in pairs named_blocks
@@ -87,27 +85,27 @@ Block = def 'Block', ->
 
     on_update: (func) =>
       setfenv func, @handler_env
-      @_on_update = -> coro(func) @
+      @_on_update = -> coro func, @
 
     on_left_click: (func) =>
       setfenv func, @handler_env
-      @left_click = (event) -> coro(func) @, event
+      @left_click = (event) -> coro func, @, event
 
     on_right_click: (func) =>
       setfenv func, @handler_env
-      @right_click = (event) -> coro(func) @, event
+      @right_click = (event) -> coro func, @, event
 
     on_middle_click: (func) =>
       setfenv func, @handler_env
-      @middle_click = (event) -> coro(func) @, event
+      @middle_click = (event) -> coro func, @, event
 
     on_scroll_up: (func) =>
       setfenv func, @handler_env
-      @scroll_up = (event) -> coro(func) @, event
+      @scroll_up = (event) -> coro func, @, event
 
     on_scroll_down: (func) =>
       setfenv func, @handler_env
-      @scroll_down = (event) -> coro(func) @, event
+      @scroll_down = (event) -> coro func, @, event
 
     to_table: =>
       {
