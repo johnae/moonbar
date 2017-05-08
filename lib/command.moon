@@ -24,7 +24,7 @@ read = (fd, count = 4096) -> ->
 env = ["#{k}=#{v}" for k, v in pairs S.environ!]
 
 execute = (cmdline) ->
-  args = {"/usr/bin/sh", "-c", cmdline}
+  args = {"/bin/sh", "-c", cmdline}
   cmd = args[1]
   thread, main = coroutine.running!
   assert not main, "Error can't suspend main thread"
