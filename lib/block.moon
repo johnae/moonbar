@@ -9,10 +9,8 @@ named_blocks = {}
 
 clear_blocklist = ->
   for k in pairs named_blocks
-    log.error "BLOCK NAMED CLEAR #{k}"
     named_blocks[k] = nil
   for k in pairs blocklist
-    log.error "BLOCK IDX CLEAR #{k}"
     blocklist[k] = nil
 
 Block = def 'Block', ->
