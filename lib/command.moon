@@ -17,7 +17,7 @@ close_all = (...) -> stream\close! for stream in *{...}
 
 read = (fd, count = 4096) -> ->
   bytes, err = fd\read nil, count
-  return bytes, err if err
+  return "", err if err
   return nil if #bytes == 0
   bytes
 
@@ -55,7 +55,7 @@ execute = (cmdline) ->
       r\stop!
       out_read\close!
       _, _, status = S.waitpid child_pid
-      coroutine.resume thread, out_data, err_data, tonumber(status.status)
+      coroutine.resume thread, out_data, err_data, status.EXITSTATUS
 
     err = Read.new err_read, (r, fd) ->
       for bytes, err in read(fd)
