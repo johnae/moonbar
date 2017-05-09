@@ -123,7 +123,9 @@ if fs.is_present(rbsnap) and remote
         text "Backing up /home..."
         start = os.time!
         stamp = os.date '%H:%M'
-        success, output = pcall command, "/usr/bin/sudo #{rbsnap} #{backup} #{remote} #{port}"
+        out, err, status = execute "/usr/bin/sudo #{rbsnap} #{backup} #{remote} #{port}", on_read: log.info, on_err: log.error
+        log.debug "rbsnap status: #{status}"
+        success = status == 0
         finish = os.time!
         elapsed = finish - start
         time_taken = if elapsed == 1
@@ -131,7 +133,6 @@ if fs.is_present(rbsnap) and remote
         else
           "#{elapsed} seconds"
 
-        log.debug "success: #{success}, rbsnap: #{output}"
         after 5.0, (t) ->
           color normal_color
           if success
@@ -190,7 +191,7 @@ block 'External IP', ->
   interval 30.0
 
   on_update =>
-    success, output = pcall command, "/usr/bin/dig TXT +short o-o.myaddr.l.google.com @ns1.google.com"
+    output = command "/usr/bin/dig TXT +short o-o.myaddr.l.google.com @ns1.google.com"
     log.debug "dig: #{output}"
     return unless success
     ip = (output\gsub('"',''))\trim!
@@ -234,7 +235,7 @@ if fs.is_present '/usr/bin/acpi'
     charging  = ' '
     interval 15.0
     on_update =>
-      success, output = pcall command, '/usr/bin/acpi -b'
+      output = command '/usr/bin/acpi -b'
       log.debug "acpi: #{output}"
       return unless success
 
@@ -274,7 +275,7 @@ if fs.is_present '/usr/bin/xrandr'
     symbol = ""
 
     on_update =>
-      success, output = pcall command, '/usr/bin/xrandr -q'
+      output = command '/usr/bin/xrandr -q'
       log.debug "xrandr: #{output}"
       return unless output
 
@@ -295,12 +296,8 @@ if fs.is_present '/usr/bin/pacman'
       color good_color
       label ''
       text "Checking for updates..."
-      success, stdout, stderr, status = pcall execute, '/usr/bin/pacman -Qu'
-      log.debug "success: #{success}, pacman: #{stdout}, ERR: #{stderr}, STATUS: #{status}"
-      unless success
-        text "Error checking for updates"
-        color critical_color
-        return
+      stdout, stderr, status = execute '/usr/bin/pacman -Qu'
+      log.debug "pacman: #{stdout}, ERR: #{stderr}, STATUS: #{status}"
       updates = if status > 0
         0
       else
@@ -318,12 +315,9 @@ if fs.is_present '/usr/bin/pacman'
 
     on_left_click =>
       if updates > 0
-        log.debug "PACMAN: execute update"
-        success, stdout, stderr, status = pcall execute, "/usr/bin/gnome-terminal -e 'sudo pacman -Syu'"
-        log.debug "PACMAN: completed update, should update"
+        stdout, stderr, status = execute "/usr/bin/gnome-terminal -e 'sudo pacman -Syu'"
         @update!
       else
-        log.debug "PACMAN: execute update, (updates was 0)"
         @update!
 
 if fs.is_present '/usr/lib/update-notifier/apt-check'
@@ -336,7 +330,7 @@ if fs.is_present '/usr/lib/update-notifier/apt-check'
       color good_color
       label ''
       text "Checking for updates..."
-      success, output = pcall command, '/usr/lib/update-notifier/apt-check --human-readable'
+      output = command '/usr/lib/update-notifier/apt-check --human-readable'
       log.debug "apt-check: #{output}"
       return unless success
 
