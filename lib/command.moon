@@ -23,7 +23,7 @@ read = (fd, count = 4096) -> ->
 
 env = ["#{k}=#{v}" for k, v in pairs S.environ!]
 
-execute = (cmdline) ->
+execute = (cmdline, opts={}) ->
   args = {"/bin/sh", "-c", cmdline}
   cmd = args[1]
   thread, main = coroutine.running!
@@ -45,12 +45,15 @@ execute = (cmdline) ->
     close_all in_read, in_write, out_write, err_write
     out_read\nonblock!
     err_read\nonblock!
+    on_read = opts.on_read or ->
+    on_err = opts.on_err or ->
 
     out = Read.new out_read, (r, fd) ->
       for bytes, err in read(fd)
         return if err and err.again
         error err if err
         out_data = "" unless out_data
+        on_read bytes
         out_data ..= bytes
       r\stop!
       out_read\close!
@@ -62,6 +65,7 @@ execute = (cmdline) ->
         return if err and err.again
         error err if err
         err_data = "" unless err_data
+        on_err bytes
         err_data ..= bytes
       r\stop!
       err_read\close!
