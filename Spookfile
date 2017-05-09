@@ -10,7 +10,7 @@ _G.log = log
 :after = require 'moonbar_util'
 
 -- How much log output can you handle? (ERR, WARN, INFO, DEBUG)
-log_level "ERR"
+log_level "INFO"
 
 -- We don't want buffered io on stdout here
 io.stdout\setvbuf 'no'
@@ -296,8 +296,7 @@ if fs.is_present '/usr/bin/pacman'
       color good_color
       label ''
       text "Checking for updates..."
-      stdout, stderr, status = execute '/usr/bin/pacman -Qu'
-      log.debug "pacman: #{stdout}, ERR: #{stderr}, STATUS: #{status}"
+      stdout, stderr, status = execute '/usr/bin/pacman -Qu', on_read: log.info, on_err: log.error
       updates = if status > 0
         0
       else
@@ -398,13 +397,10 @@ for sink in *sinklist
         color normal_color
 
     on_left_click =>
-      log.error "left_click curr: #{pulse.is_current}"
       if pulse.is_current
-        log.error "left_click toggle mute"
         pulse\toggle_mute!
         @update!
       else
-        log.error "left_click make current"
         pulse\make_current!
         update_pulse_blocks! -- all volume blocks including self
       write_blocks! -- for the best possible feedback
@@ -451,8 +447,6 @@ stdin_reader = on_read stdin, (r, fd) ->
     line, replaced = line\gsub '^,', ''
     status, event = pcall json.decode, line
     if status
-      log.error "GOT EVENT "
-      log.error event
       return unless event.name
       block = named_blocks[event.name]
       return unless block
