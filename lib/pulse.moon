@@ -2,7 +2,6 @@ round = math.round
 :define = require 'classy'
 insert: append = table
 :command = require "command"
-log = _G.log
 
 define 'PulseAudio', ->
   vol_cmd = (sink, val) -> "/usr/bin/pacmd set-sink-volume #{sink} #{val}"
