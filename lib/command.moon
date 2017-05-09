@@ -21,10 +21,16 @@ read = (fd, count = 4096) -> ->
   return nil if #bytes == 0
   bytes
 
-env = ["#{k}=#{v}" for k, v in pairs S.environ!]
+process_env = (opts={}) ->
+  env = {k, v for k, v in pairs S.environ!}
+  if opts.env
+    for k, v in pairs opts.env
+      env[k] = v
+  ["#{k}=#{v}" for k, v in pairs env]
 
 execute = (cmdline, opts={}) ->
   args = {"/bin/sh", "-c", cmdline}
+  env = process_env(opts)
   cmd = args[1]
   thread, main = coroutine.running!
   assert not main, "Error can't suspend main thread"
