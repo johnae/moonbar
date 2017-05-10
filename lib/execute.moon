@@ -28,7 +28,7 @@ process_env = (opts={}) ->
       env[k] = v
   ["#{k}=#{v}" for k, v in pairs env]
 
-execute = (cmdline, opts={}) ->
+(cmdline, opts={}) ->
   args = {"/bin/sh", "-c", cmdline}
   env = process_env(opts)
   cmd = args[1]
@@ -87,11 +87,3 @@ execute = (cmdline, opts={}) ->
     coroutine.yield!
   else
     error "fork error"
-
-command = (cmdline, ...) ->
-  stdout, stderr, status = execute cmdline, ...
-  if status > 0
-    error "exit(#{status}): #{stderr}"
-  stdout
-
-:execute, :command

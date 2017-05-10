@@ -18,7 +18,7 @@ log.info "loading moonbar..."
 io.stdout\setvbuf 'no'
 
 Types = require("syscall").t
-:execute, :command = require 'command'
+execute = require 'execute'
 
 json = require "json"
 normal_color = "#FFFFFF"
@@ -121,6 +121,7 @@ if fs.is_present(rbsnap) and remote
       color normal_color
       text "Backup"
       if do_backup
+        do_backup = false
         color good_color
         text "Backing up /home..."
         start = os.time!
@@ -193,9 +194,9 @@ block 'External IP', ->
   interval 30.0
 
   on_update =>
-    output = command "/usr/bin/dig TXT +short o-o.myaddr.l.google.com @ns1.google.com"
+    output, err, status = execute "/usr/bin/dig TXT +short o-o.myaddr.l.google.com @ns1.google.com"
     log.debug "dig: #{output}"
-    return unless success
+    return unless status == 0
     ip = (output\gsub('"',''))\trim!
     text (ip != '' and ip or 'Unknown')
 
@@ -237,11 +238,11 @@ if fs.is_present '/usr/bin/acpi'
     charging  = ' '
     interval 15.0
     on_update =>
-      output = command '/usr/bin/acpi -b'
-      log.debug "acpi: #{output}"
-      return unless success
+      out, err, status = execute '/usr/bin/acpi -b'
+      log.debug "acpi: #{out}"
+      return unless status == 0
 
-      status, percent, time_remaining = battery_acpi output
+      status, percent, time_remaining = battery_acpi out
       return unless status
 
       color normal_color
@@ -277,7 +278,7 @@ if fs.is_present '/usr/bin/xrandr'
     symbol = ""
 
     on_update =>
-      output = command '/usr/bin/xrandr -q'
+      output, err, status = execute '/usr/bin/xrandr -q'
       log.debug "xrandr: #{output}"
       return unless output
 
@@ -332,9 +333,9 @@ if fs.is_present '/usr/lib/update-notifier/apt-check'
       color good_color
       label ''
       text "Checking for updates..."
-      output = command '/usr/lib/update-notifier/apt-check --human-readable'
+      output, err, status = execute '/usr/lib/update-notifier/apt-check --human-readable'
       log.debug "apt-check: #{output}"
-      return unless success
+      return unless status == 0
 
       updates = output\match("^%d+")
       updates = updates and tonumber(updates) or 0
@@ -350,7 +351,7 @@ if fs.is_present '/usr/lib/update-notifier/apt-check'
 
     on_left_click =>
       if updates > 0
-        command '/usr/bin/update-manager'
+        execute '/usr/bin/update-manager', on_read: log.info, on_err: log.error
         @update!
       else
         @update!

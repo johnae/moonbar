@@ -1,7 +1,7 @@
 round = math.round
 :define = require 'classy'
 insert: append = table
-:command = require "command"
+execute = require "execute"
 
 define 'PulseAudio', ->
   vol_cmd = (sink, val) -> "/usr/bin/pacmd set-sink-volume #{sink} #{val}"
@@ -43,8 +43,8 @@ define 'PulseAudio', ->
 
   properties
     is_current: =>
-      success, out = pcall command, "/usr/bin/pacmd list-sinks"
-      return false unless success
+      out, err, status = execute "/usr/bin/pacmd list-sinks"
+      return false unless status == 0
       sink_list = parse_list_sinks out
       for sink in *sink_list
         if sink.name == @name
@@ -52,8 +52,8 @@ define 'PulseAudio', ->
 
     volume:
       get: =>
-        success, out = pcall command, "/usr/bin/pacmd dump"
-        return unless success
+        out, err, status = execute "/usr/bin/pacmd dump"
+        return unless status == 0
         for sink, value in out\gmatch 'set%-sink%-volume ([^%s]+) (0x%x+)'
           if sink == @name
             return tonumber(value) / 65536
@@ -62,11 +62,11 @@ define 'PulseAudio', ->
         val = 1 if val > 1
         val = 0 if val < 0
         vol = round val * 65536
-        pcall command, vol_cmd @name, vol
+        execute vol_cmd(@name, vol)
 
     mute:=>
-      success, out = pcall command, "/usr/bin/pacmd dump"
-      return unless success
+      out, err, status = execute "/usr/bin/pacmd dump"
+      return unless status == 0
       for sink, value in out\gmatch 'set%-sink%-mute ([^%s]+) (%a+)'
         if sink == @name
           return value == "yes"
@@ -80,13 +80,13 @@ define 'PulseAudio', ->
 
     toggle_mute: =>
       if @mute
-        pcall command, mute_cmd @name, 0
+        execute mute_cmd(@name, 0)
       else
-        pcall command, mute_cmd @name, 1
+        execute mute_cmd(@name, 1)
 
     make_current: =>
-      pcall command, "/usr/bin/pacmd set-default-sink #{@name}"
-      success, out = pcall command, "/usr/bin/pacmd list-sink-inputs"
+      execute "/usr/bin/pacmd set-default-sink #{@name}"
+      out = execute "/usr/bin/pacmd list-sink-inputs"
       inputs = parse_list_sink_inputs out
       for input in *inputs
-        pcall command, "/usr/bin/pacmd move-sink-input #{input.index} #{@index}"
+        execute "/usr/bin/pacmd move-sink-input #{input.index} #{@index}"
