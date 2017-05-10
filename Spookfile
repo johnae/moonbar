@@ -316,10 +316,11 @@ if fs.is_present '/usr/bin/pacman'
 
     on_left_click =>
       if updates > 0
-        stdout, stderr, status = execute "/usr/bin/gnome-terminal -e 'sudo pacman -Syu'"
+        stdout, stderr, status = execute "/home/john/Local/bin/st -e sudo pacman -Syu", on_read: log.info, on_err: log.error
         @update!
       else
         @update!
+      write_blocks!
 
 if fs.is_present '/usr/lib/update-notifier/apt-check'
   updates = 0
@@ -353,6 +354,7 @@ if fs.is_present '/usr/lib/update-notifier/apt-check'
         @update!
       else
         @update!
+      write_blocks!
 
 Pulse = require "pulse"
 round = math.round
