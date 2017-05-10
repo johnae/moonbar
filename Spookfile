@@ -125,7 +125,7 @@ if fs.is_present(rbsnap) and remote
         text "Backing up /home..."
         start = os.time!
         stamp = os.date '%H:%M'
-        out, err, status = execute "/usr/bin/sudo -E #{rbsnap} #{backup} #{remote} #{port}", on_read: log.info, on_err: log.error, env: {PROGRESS_CMD: 'cat'}
+        out, err, status = execute "/usr/bin/sudo #{rbsnap} #{backup} #{remote} #{port}", on_read: log.info, on_err: log.error
         log.debug "rbsnap status: #{status}"
         success = status == 0
         finish = os.time!
