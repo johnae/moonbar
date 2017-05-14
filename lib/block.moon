@@ -1,6 +1,6 @@
 def = require'classy'.define
 log = _G.log
-:after, :coro = require 'moonbar_util'
+:after = require 'moonbar_util'
 
 -- this is the table of i3 bar info, each
 -- block adds itself to this table
@@ -73,7 +73,7 @@ Block = def 'Block', ->
     interval: (ival) =>
       @stop!
       @timer = spook\timer ival, (t) ->
-        pcall @_on_update
+        @update!
         t\again!
       @timer\start!
 
@@ -83,27 +83,27 @@ Block = def 'Block', ->
 
     on_update: (func) =>
       setfenv func, @handler_env
-      @_on_update = -> coro func, @
+      @_on_update = -> func @
 
     on_left_click: (func) =>
       setfenv func, @handler_env
-      @left_click = (event) -> coro func, @, event
+      @left_click = (event) -> func @, event
 
     on_right_click: (func) =>
       setfenv func, @handler_env
-      @right_click = (event) -> coro func, @, event
+      @right_click = (event) -> func @, event
 
     on_middle_click: (func) =>
       setfenv func, @handler_env
-      @middle_click = (event) -> coro func, @, event
+      @middle_click = (event) -> func @, event
 
     on_scroll_up: (func) =>
       setfenv func, @handler_env
-      @scroll_up = (event) -> coro func, @, event
+      @scroll_up = (event) -> func @, event
 
     on_scroll_down: (func) =>
       setfenv func, @handler_env
-      @scroll_down = (event) -> coro func, @, event
+      @scroll_down = (event) -> func @, event
 
     to_table: =>
       {

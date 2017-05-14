@@ -1,7 +1,8 @@
 round = math.round
 :define = require 'classy'
 insert: append = table
-execute = require "execute"
+:spawn, :exec = require "process"
+log = _G.log
 
 define 'PulseAudio', ->
   vol_cmd = (sink, val) -> "/usr/bin/pacmd set-sink-volume #{sink} #{val}"
@@ -37,13 +38,17 @@ define 'PulseAudio', ->
     list_sinks: =>
       -- using synchronous built-in here since this
       -- is intended to be used in a setup context
+      -- and so the coroutine/event system isn't
+      -- yet initialized
       reader = io.popen "/usr/bin/pacmd list-sinks"
       out = reader\read '*a'
       parse_list_sinks out
 
   properties
     is_current: =>
-      out, err, status = execute "/usr/bin/pacmd list-sinks"
+      out = ""
+      status = spawn "/usr/bin/pacmd list-sinks", on_err: log.error, on_read: (data) ->
+        out ..= data
       return false unless status == 0
       sink_list = parse_list_sinks out
       for sink in *sink_list
@@ -52,7 +57,9 @@ define 'PulseAudio', ->
 
     volume:
       get: =>
-        out, err, status = execute "/usr/bin/pacmd dump"
+        out = ""
+        status = spawn "/usr/bin/pacmd dump", on_err: log.error, on_read: (data) ->
+          out ..= data
         return unless status == 0
         for sink, value in out\gmatch 'set%-sink%-volume ([^%s]+) (0x%x+)'
           if sink == @name
@@ -62,10 +69,12 @@ define 'PulseAudio', ->
         val = 1 if val > 1
         val = 0 if val < 0
         vol = round val * 65536
-        execute vol_cmd(@name, vol)
+        exec vol_cmd(@name, vol)
 
     mute:=>
-      out, err, status = execute "/usr/bin/pacmd dump"
+      out = ""
+      status = spawn "/usr/bin/pacmd dump", on_err: log.error, on_read: (data) ->
+        out ..= data
       return unless status == 0
       for sink, value in out\gmatch 'set%-sink%-mute ([^%s]+) (%a+)'
         if sink == @name
@@ -79,14 +88,13 @@ define 'PulseAudio', ->
       @index = sink.index
 
     toggle_mute: =>
-      if @mute
-        execute mute_cmd(@name, 0)
-      else
-        execute mute_cmd(@name, 1)
+      val = @mute and 0 or 1
+      exec mute_cmd(@name, val)
 
     make_current: =>
-      execute "/usr/bin/pacmd set-default-sink #{@name}"
-      out = execute "/usr/bin/pacmd list-sink-inputs"
+      exec "/usr/bin/pacmd set-default-sink #{@name}"
+      out = ""
+      status = spawn "/usr/bin/pacmd list-sink-inputs", on_err: log.error, on_read: (data) ->
+        out ..= data
       inputs = parse_list_sink_inputs out
-      for input in *inputs
-        execute "/usr/bin/pacmd move-sink-input #{input.index} #{@index}"
+      exec "/usr/bin/pacmd move-sink-input #{input.index} #{@index}" for input in *inputs
