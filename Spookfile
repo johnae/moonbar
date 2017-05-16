@@ -274,25 +274,25 @@ if fs.is_present '/usr/bin/acpi'
         color good_color
         label charging
 
-if fs.is_present '/usr/bin/xrandr'
-  block "Monitor", ->
-    interval 30.0
-    label ' '
-    symbol = ""
-
-    on_update =>
-      out = ""
-      status = spawn '/usr/bin/xrandr -q', on_err: log.error, on_read: (data) ->
-        log.debug data
-        out ..= data
-      return unless out
-
-      for line in *out\split("\n")
-        if line\match '^DP1'
-          if line\match '%d+mm'
-            text symbol
-            return
-      text 'OFF'
+-- if fs.is_present '/usr/bin/xrandr'
+--   block "Monitor", ->
+--     interval 30.0
+--     label ' '
+--     symbol = ""
+--
+--     on_update =>
+--       out = ""
+--       status = spawn '/usr/bin/xrandr -q', on_err: log.error, on_read: (data) ->
+--         log.debug data
+--         out ..= data
+--       return unless out
+--
+--       for line in *out\split("\n")
+--         if line\match '^DP1'
+--           if line\match '%d+mm'
+--             text symbol
+--             return
+--       text 'OFF'
 
 if fs.is_present '/usr/bin/pacman'
   updates = 0
