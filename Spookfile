@@ -307,7 +307,7 @@ if fs.is_present '/usr/bin/pacman'
       out = ""
       status = spawn '/usr/bin/pacman -Qu', on_err: log.error, on_read: (data) ->
         log.debug data
-        out ..= ""
+        out ..= data
 
       updates = if status > 0
         0
