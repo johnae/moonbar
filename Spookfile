@@ -9,6 +9,7 @@ log = require 'systemd-journal'
 _G.log = log
 gettimeofday = gettimeofday
 round = math.round
+S = require "syscall"
 :after = require 'moonbar_util'
 
 cache_dir = "#{os.getenv('HOME')}/.cache/moonbar"
@@ -132,9 +133,10 @@ backup = "/home"
 remote = os.getenv('RBSNAP_REMOTE')
 port = os.getenv('RBSNAP_PORT')
 do_backup = false
-last_stamp, had_last_stamp = cache_read 'rbsnap_stamp.txt'
-unless had_last_stamp
-  last_stamp = "unknown"
+last_stamp = if fs.is_present("#{backup}/.backup-latest")
+  os.date('%Y-%m-%d %H:%M', S.stat("#{backup}/.backup-latest").mtime)
+else
+  "none"
 if fs.is_present(rbsnap) and remote
   block 'Backup', ->
     color normal_color
@@ -149,11 +151,12 @@ if fs.is_present(rbsnap) and remote
         color good_color
         text "Backing up /home..."
         start = gettimeofday!
-        stamp = os.date '%Y-%m-%d %H:%M'
         status = spawn "/usr/bin/sudo #{rbsnap} #{backup} #{remote} #{port}", on_err: log.error, on_read: log.info
         success = status == 0
-        if success
-          cache_write stamp, 'rbsnap_stamp.txt'
+        stamp = if fs.is_present("#{backup}/.backup-latest")
+          os.date('%Y-%m-%d %H:%M', S.stat("#{backup}/.backup-latest").mtime)
+        else
+          "none"
         finish = gettimeofday!
         elapsed = round((finish - start) / 1000.0, 2)
         time_taken = "#{elapsed} seconds"
