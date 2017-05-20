@@ -86,6 +86,7 @@ block 'Pomodoro', ->
   text "Pomodoro: paused"
   on_update =>
     return if pomodoro_paused
+    color normal_color
     pomodoro_time += 1
     curr = pomodoro[pomodoro_current]
     time, work = curr[1], curr[2]
@@ -93,6 +94,7 @@ block 'Pomodoro', ->
       label " "
       text "Pomodoro: work"
     else
+      color good_color
       label " "
       text "Pomodoro: break (#{time} min)"
     if pomodoro_time >= time
