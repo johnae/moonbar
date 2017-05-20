@@ -1,20 +1,10 @@
 :round = math
-:insert = table
+os = require'syscall'.abi.os
+system = os == 'linux' and 'linux' or 'bsd'
+cpu_stats = require "#{system}.cpu_stats"
 
 cpu_total = 0
 cpu_idle = 0
-
-cpu_stats = ->
-  f = io.open('/proc/stat', 'r')
-  aggregate = f\read('*a')\split("\n")[1]
-  f\close!
-  fields = {}
-  for idx, field in ipairs aggregate\split(' ')
-    insert fields, tonumber(field) if idx > 1
-  user, nice, system, idle, iowait, irq, softirq, steal, guest, guest_nice = unpack fields
-  non_idle = user + nice + system + irq
-  total = idle + non_idle
-  total, idle
 
 ->
   prev_total, prev_idle = cpu_total, cpu_idle
