@@ -478,9 +478,7 @@ watch "#{os.getenv('HOME')}/.i3", ->
 
 write_blocks!
 
-json_writer = timer 0.5, (t) ->
-  write_blocks!
-  t\again!
+json_writer = every 0.5, (t) -> write_blocks!
 
 stdin = Types.fd(0) -- MUST be wrapped in a metatype
 stdin_reader = on_read stdin, (r, fd) ->

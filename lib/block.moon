@@ -72,9 +72,7 @@ Block = def 'Block', ->
 
     interval: (ival) =>
       @stop!
-      @timer = spook\timer ival, (t) ->
-        @update!
-        t\again!
+      @timer = spook\every ival, (t) -> @update!
       @timer\start!
 
     update: => @_on_update! if @_on_update
