@@ -7,7 +7,30 @@ insert: append = table
 load_spookfile = _G.load_spookfile
 log = require 'systemd-journal'
 _G.log = log
+gettimeofday = gettimeofday
+round = math.round
+S = require "syscall"
 :after = require 'moonbar_util'
+
+cache_dir = "#{os.getenv('HOME')}/.cache/moonbar"
+fs.mkdir_p cache_dir
+cache_write = (data, name) ->
+  path = "#{cache_dir}/#{name}"
+  f = io.open path, "w"
+  if f
+    f\write data
+    f\close!
+    return true
+  false
+
+cache_read = (name) ->
+  path = "#{cache_dir}/#{name}"
+  f = io.open path, "r"
+  if f
+    content = f\read!
+    f\close!
+    return content, true
+  nil, false
 
 -- How much log output can you handle? (ERR, WARN, INFO, DEBUG)
 log_level "INFO"
@@ -110,30 +133,33 @@ backup = "/home"
 remote = os.getenv('RBSNAP_REMOTE')
 port = os.getenv('RBSNAP_PORT')
 do_backup = false
+last_stamp = if fs.is_present("#{backup}/.backup-latest")
+  os.date('%b-%d %H:%M', S.stat("#{backup}/.backup-latest").mtime)
+else
+  "none"
 if fs.is_present(rbsnap) and remote
   block 'Backup', ->
-    text "Backup"
     color normal_color
     interval 30.0 * 60 -- 30 minutes
 
     on_update =>
       label ''
       color normal_color
-      text "Backup"
+      text "Backup (last: #{last_stamp})"
       if do_backup
         do_backup = false
         color good_color
         text "Backing up /home..."
-        start = os.time!
-        stamp = os.date '%H:%M'
+        start = gettimeofday!
         status = spawn "/usr/bin/sudo #{rbsnap} #{backup} #{remote} #{port}", on_err: log.error, on_read: log.info
         success = status == 0
-        finish = os.time!
-        elapsed = finish - start
-        time_taken = if elapsed == 1
-          "#{elapsed} second"
+        stamp = if fs.is_present("#{backup}/.backup-latest")
+          os.date('%b-%d %H:%M', S.stat("#{backup}/.backup-latest").mtime)
         else
-          "#{elapsed} seconds"
+          "none"
+        finish = gettimeofday!
+        elapsed = round((finish - start) / 1000.0, 2)
+        time_taken = "#{elapsed} seconds"
 
         after 5.0, (t) ->
           color normal_color
@@ -274,25 +300,25 @@ if fs.is_present '/usr/bin/acpi'
         color good_color
         label charging
 
-if fs.is_present '/usr/bin/xrandr'
-  block "Monitor", ->
-    interval 30.0
-    label ' '
-    symbol = ""
-
-    on_update =>
-      out = ""
-      status = spawn '/usr/bin/xrandr -q', on_err: log.error, on_read: (data) ->
-        log.debug data
-        out ..= data
-      return unless out
-
-      for line in *out\split("\n")
-        if line\match '^DP1'
-          if line\match '%d+mm'
-            text symbol
-            return
-      text 'OFF'
+-- if fs.is_present '/usr/bin/xrandr'
+--   block "Monitor", ->
+--     interval 30.0
+--     label ' '
+--     symbol = ""
+--
+--     on_update =>
+--       out = ""
+--       status = spawn '/usr/bin/xrandr -q', on_err: log.error, on_read: (data) ->
+--         log.debug data
+--         out ..= data
+--       return unless out
+--
+--       for line in *out\split("\n")
+--         if line\match '^DP1'
+--           if line\match '%d+mm'
+--             text symbol
+--             return
+--       text 'OFF'
 
 if fs.is_present '/usr/bin/pacman'
   updates = 0
@@ -307,7 +333,7 @@ if fs.is_present '/usr/bin/pacman'
       out = ""
       status = spawn '/usr/bin/pacman -Qu', on_err: log.error, on_read: (data) ->
         log.debug data
-        out ..= ""
+        out ..= data
 
       updates = if status > 0
         0
