@@ -136,7 +136,7 @@ remote = os.getenv('RBSNAP_REMOTE')
 port = os.getenv('RBSNAP_PORT')
 do_backup = false
 last_stamp = if fs.is_present("#{backup}/.backup-latest")
-  os.date('%b-%d %H:%M', S.stat("#{backup}/.backup-latest").mtime)
+  os.date('%b-%d %H:%M', S.stat("#{backup}/.backup-latest").ctime)
 else
   "none"
 if fs.is_present(rbsnap) and remote
@@ -156,7 +156,7 @@ if fs.is_present(rbsnap) and remote
         status = spawn "/usr/bin/sudo #{rbsnap} #{backup} #{remote} #{port}", on_err: log.error, on_read: log.info
         success = status == 0
         stamp = if fs.is_present("#{backup}/.backup-latest")
-          os.date('%b-%d %H:%M', S.stat("#{backup}/.backup-latest").mtime)
+          os.date('%b-%d %H:%M', S.stat("#{backup}/.backup-latest").ctime)
         else
           "none"
         finish = gettimeofday!
