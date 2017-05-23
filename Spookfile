@@ -148,7 +148,7 @@ if home_backup.can_backup!
       last = home_backup.human_time_of_last_backup!
       nxt = home_backup.human_time_until_next_backup!
       if home_backup.last_status!
-        if backup_every - home_backup.time_since_last_backup! < 60
+        if backup_every - home_backup.time_since_last_backup! < 90
           color warning_color
         else
           color normal_color
