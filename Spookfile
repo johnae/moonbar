@@ -128,7 +128,6 @@ block 'Pomodoro', ->
         text "Pomodoro: break"
       color normal_color
 
-
 backup_complete_icon = "#{os.getenv('HOME')}/Pictures/icons/essential/cloud-computing-2.svg"
 backup_fail_icon = "#{os.getenv('HOME')}/Pictures/icons/essential/cloud-computing-5.svg"
 remote = os.getenv('RBSNAP_REMOTE')
@@ -136,7 +135,8 @@ port = os.getenv('RBSNAP_PORT')
 
 rbsnap_backup = require('rbsnap')(log)
 backup_every = 60*30 -- 30 minutes
-home_backup = rbsnap_backup(remote, port, "/home", backup_every)
+backup_path = "/home"
+home_backup = rbsnap_backup(remote, port, backup_path, backup_every)
 forced_backup = false
 grace_time = 0
 
@@ -177,11 +177,11 @@ if home_backup.can_backup!
         if success
           color good_color
           text "Backup succeeded"
-          os.execute "/usr/bin/notify-send -i #{backup_complete_icon} 'Backup' 'Backup of #{backup} to #{remote} finished in #{time_taken}.'"
+          os.execute "/usr/bin/notify-send -i #{backup_complete_icon} 'Backup' 'Backup of #{backup_path} to #{remote} finished in #{time_taken}.'"
         else
           text "Backup failed"
           color critical_color
-          os.execute "/usr/bin/notify-send -i #{backup_fail_icon} -u critical 'Backup' 'Backup of #{backup} to #{remote} failed in #{time_taken}!'"
+          os.execute "/usr/bin/notify-send -i #{backup_fail_icon} -u critical 'Backup' 'Backup of #{backup_path} to #{remote} failed in #{time_taken}!'"
 
     on_left_click =>
       forced_backup = true
