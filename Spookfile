@@ -142,6 +142,7 @@ grace_time = 0
 
 if home_backup.can_backup!
   block 'Backup', ->
+    label " "
     color normal_color
     interval 1 -- check every minute
     update_status = ->
@@ -157,7 +158,6 @@ if home_backup.can_backup!
       text "Backup #{last}, #{nxt}"
 
     on_update =>
-      label ''
       grace_time -= 1 if grace_time > 0
       grace_time = 0 if grace_time < 0
       return if grace_time > 0
@@ -268,22 +268,22 @@ if fs.is_present '/usr/bin/acpi'
     batt25    = ' '
     batt0     = ' '
     charging  = ' '
-    interval 15.0
+    interval 30.0
     on_update =>
       out = ""
       status = spawn '/usr/bin/acpi -b', on_err: log.error, on_read: (data) ->
-        log.debug data
+        log.info data
         out ..= data
       return unless status == 0
 
-      status, percent, time_remaining = battery_acpi out
-      return unless status
+      state, percent, time_remaining = battery_acpi out
+      return unless state
 
       color normal_color
       tr = time_remaining and " (#{time_remaining})" or ''
       text "#{percent}% #{tr}"
 
-      if status == 'discharging'
+      if state == 'discharging'
         if percent < 10
           unless alert_sent
             alert_sent = true
@@ -300,30 +300,10 @@ if fs.is_present '/usr/bin/acpi'
           label batt75
         else
           label batt100
-      else if status == 'charging'
+      else if state == 'charging' or state == 'full'
         alert_sent = false
         color good_color
         label charging
-
--- if fs.is_present '/usr/bin/xrandr'
---   block "Monitor", ->
---     interval 30.0
---     label ' '
---     symbol = ""
---
---     on_update =>
---       out = ""
---       status = spawn '/usr/bin/xrandr -q', on_err: log.error, on_read: (data) ->
---         log.debug data
---         out ..= data
---       return unless out
---
---       for line in *out\split("\n")
---         if line\match '^DP1'
---           if line\match '%d+mm'
---             text symbol
---             return
---       text 'OFF'
 
 if fs.is_present '/usr/bin/pacman'
   updates = 0
