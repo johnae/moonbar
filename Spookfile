@@ -138,14 +138,16 @@ backup_every = 60*30 -- 30 minutes
 backup_path = "/home"
 home_backup = rbsnap_backup(remote, port, backup_path, backup_every)
 forced_backup = false
-grace_time = 0
+grace_time = 10
+just_started = true
 
 if home_backup.can_backup!
   block 'Backup', ->
     label " "
     color normal_color
-    interval 1 -- check every minute
+    interval 1 -- update every second
     update_status = ->
+      just_started = false
       last = home_backup.human_time_of_last_backup!
       nxt = home_backup.human_time_until_next_backup!
       if home_backup.last_status!
@@ -160,6 +162,8 @@ if home_backup.can_backup!
     on_update =>
       grace_time -= 1 if grace_time > 0
       grace_time = 0 if grace_time < 0
+      if just_started
+        text "Backup, initial grace time: #{grace_time}s"
       return if grace_time > 0
       return if home_backup.backing_up!
       update_status!
