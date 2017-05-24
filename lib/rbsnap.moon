@@ -17,7 +17,7 @@ port = os.getenv('RBSNAP_PORT')
     latest_backup_path = "#{backup}/.backup-latest"
 
     last_status = -> successful
-    
+
     can_backup = ->
       return false unless (backup and backup != "")
       return false unless (port and port != "")
@@ -32,12 +32,18 @@ port = os.getenv('RBSNAP_PORT')
       return days, hours, mins, secs
 
     cached_time = 0
+    cached_at = 0
     time_of_last_backup = ->
-      return cached_time if os.time! - cached_time < 60
-      cached_time = if fs.is_present latest_backup_path
-        S.stat(latest_backup_path).ctime
-      else
-        os.time!-(86400*30) -- ~a month ago by default
+      since_cached = os.time! - cached_at
+      since_cached_time = os.time! - cached_time
+      if since_cached > 60 or since_cached_time > 86400
+        cached_at = os.time!
+        cached_time = if fs.is_present latest_backup_path
+          log.info "Found #{latest_backup_path}, getting change time (time since change: #{since_cached_time}, since cache: #{since_cached})"
+          S.stat(latest_backup_path).ctime
+        else
+          log.info "Couldn't find #{latest_backup_path}, defaulting to a month ago (time since change: #{since_cached_time}, since cache: #{since_cached})"
+          os.time!-(86400*30) -- ~a month ago by default
       cached_time
 
     human_time_until_next_backup = ->
@@ -60,6 +66,8 @@ port = os.getenv('RBSNAP_PORT')
       return if backing_up
       backing_up = true
       status = spawn "/usr/bin/sudo #{rbsnap} #{backup} #{remote} #{port}", on_err: log.error, on_read: log.info
+      cached_time = 0
+      cached_at = 0
       backing_up = false
       successful = status == 0
       successful
