@@ -143,7 +143,7 @@ just_started = true
 
 if home_backup.can_backup!
   block 'Backup', ->
-    label " "
+    label " Backup: "
     color normal_color
     interval 1 -- update every second
     update_status = ->
@@ -157,13 +157,13 @@ if home_backup.can_backup!
           color normal_color
       else
         color critical_color
-      text "Backup #{last}, #{nxt}"
+      text "last #{last}, next #{nxt}"
 
     on_update =>
       grace_time -= 1 if grace_time > 0
       grace_time = 0 if grace_time < 0
       if just_started
-        text "Backup, initial grace time: #{grace_time}s"
+        text "grace time #{grace_time}s"
       return if grace_time > 0
       return if home_backup.backing_up!
       update_status!
@@ -171,19 +171,19 @@ if home_backup.can_backup!
       if home_backup.backup_is_due! or forced_backup
         forced_backup = false
         color good_color
-        text "Backing up /home..."
+        text "/home..."
         start = gettimeofday!
         success = home_backup.backup_now!
         finish = gettimeofday!
         elapsed = round((finish - start) / 1000.0, 2)
         time_taken = "#{elapsed} seconds"
-        grace_time = 6
+        grace_time = 20
         if success
           color good_color
-          text "Backup succeeded"
+          text "succeeded"
           os.execute "/usr/bin/notify-send -i #{backup_complete_icon} 'Backup' 'Backup of #{backup_path} to #{remote} finished in #{time_taken}.'"
         else
-          text "Backup failed"
+          text "failed"
           color critical_color
           os.execute "/usr/bin/notify-send -i #{backup_fail_icon} -u critical 'Backup' 'Backup of #{backup_path} to #{remote} failed in #{time_taken}!'"
 

@@ -2,6 +2,7 @@ S = require "syscall"
 fs = require 'fs'
 :spawn = require 'process'
 :floor = math
+:format = string
 rbsnap = "#{os.getenv('HOME')}/Local/bin/rbsnap"
 remote = os.getenv('RBSNAP_REMOTE')
 port = os.getenv('RBSNAP_PORT')
@@ -49,11 +50,10 @@ port = os.getenv('RBSNAP_PORT')
     human_time_until_next_backup = ->
       time_left_secs = backup_every - (os.time! - time_of_last_backup!)
       days, hours, mins, secs = human_time time_left_secs
-      "#{mins}m #{secs}s to next"
+      format('%02d:%02d', mins, secs)
 
     human_time_of_last_backup = ->
-      msg = last_status! and 'last' or 'failed'
-      os.date("#{msg}: %b-%d %H:%M", time_of_last_backup!)
+      os.date("%b-%d %H:%M", time_of_last_backup!)
 
     time_since_last_backup = ->
       os.time! - time_of_last_backup!
