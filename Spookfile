@@ -465,6 +465,10 @@ watch "#{os.getenv('HOME')}/.i3", ->
     os.execute genconf
     os.execute restart_i3
 
+watch "#{os.getenv('HOME')}/Pictures", ->
+  on_changed '(.*wallpaper%..*)', (event, name) ->
+    os.execute "feh --bg-fill #{name}"
+
 write_blocks!
 
 json_writer = every 0.5, (t) -> write_blocks!
