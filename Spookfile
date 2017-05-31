@@ -473,8 +473,7 @@ write_blocks!
 
 json_writer = every 0.5, (t) -> write_blocks!
 
-stdin = Types.fd(0) -- MUST be wrapped in a metatype
-stdin_reader = on_read stdin, (r, fd) ->
+stdin_reader = on_read S.stdin, (r, fd) ->
   data = fd\read!
   if data
     line, replaced = data\gsub '^%[', ''
