@@ -11,6 +11,7 @@ gettimeofday = gettimeofday
 round = math.round
 S = require "syscall"
 :after = require 'moonbar_util'
+:format = string
 
 cache_dir = "#{os.getenv('HOME')}/.cache/moonbar"
 fs.mkdir_p cache_dir
@@ -144,7 +145,7 @@ just_started = true
 if home_backup.can_backup!
   block 'Backup', ->
     label " Backup: "
-    color normal_color
+    color warning_color
     interval 1 -- update every second
     update_status = ->
       just_started = false
@@ -247,7 +248,7 @@ block 'External IP', ->
 cpu_usage = require "cpu_usage"
 block 'Cpu Usage', ->
   cpu = cpu_usage!
-  text "0%"
+  text "#{format('%5.1f', 0)}%"
   label " "
   interval 2.0
   on_update =>
@@ -258,7 +259,7 @@ block 'Cpu Usage', ->
       color warning_color
     else
       color critical_color
-    text "#{cpu}%"
+    text "#{format('%5.1f', cpu)}%"
 
 if fs.is_present '/usr/bin/acpi'
   battery_acpi = require 'battery_acpi'
@@ -285,7 +286,7 @@ if fs.is_present '/usr/bin/acpi'
 
       color normal_color
       tr = time_remaining and " (#{time_remaining})" or ''
-      text "#{percent}% #{tr}"
+      text "#{format('%3d', percent)}% #{tr}"
 
       if state == 'discharging'
         if percent < 10
@@ -419,7 +420,7 @@ for sink in *sinklist
       if muted
         text "mute"
       else
-        text "#{round(pulse.volume * 100)}%"
+        text "#{format('%3d', round(pulse.volume * 100))}%"
 
       if current and muted
         color warning_color
