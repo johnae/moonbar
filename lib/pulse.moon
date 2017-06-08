@@ -1,7 +1,8 @@
 round = math.round
 :define = require 'classy'
 insert: append = table
-:spawn, :exec = require "process"
+:exec = require "process"
+command = require 'command'
 log = _G.log
 
 define 'PulseAudio', ->
@@ -46,10 +47,8 @@ define 'PulseAudio', ->
 
   properties
     is_current: =>
-      out = ""
-      status = spawn "/usr/bin/pacmd list-sinks", on_err: log.error, on_read: (data) ->
-        out ..= data
-      return false unless status == 0
+      out = command "/usr/bin/pacmd list-sinks"
+      return false unless out
       sink_list = parse_list_sinks out
       for sink in *sink_list
         if sink.name == @name
@@ -57,10 +56,8 @@ define 'PulseAudio', ->
 
     volume:
       get: =>
-        out = ""
-        status = spawn "/usr/bin/pacmd dump", on_err: log.error, on_read: (data) ->
-          out ..= data
-        return unless status == 0
+        out = command "/usr/bin/pacmd dump"
+        return unless out
         for sink, value in out\gmatch 'set%-sink%-volume ([^%s]+) (0x%x+)'
           if sink == @name
             return tonumber(value) / 65536
@@ -72,10 +69,8 @@ define 'PulseAudio', ->
         exec vol_cmd(@name, vol)
 
     mute:=>
-      out = ""
-      status = spawn "/usr/bin/pacmd dump", on_err: log.error, on_read: (data) ->
-        out ..= data
-      return unless status == 0
+      out = command "/usr/bin/pacmd dump"
+      return unless out
       for sink, value in out\gmatch 'set%-sink%-mute ([^%s]+) (%a+)'
         if sink == @name
           return value == "yes"
@@ -93,8 +88,7 @@ define 'PulseAudio', ->
 
     make_current: =>
       exec "/usr/bin/pacmd set-default-sink #{@name}"
-      out = ""
-      status = spawn "/usr/bin/pacmd list-sink-inputs", on_err: log.error, on_read: (data) ->
-        out ..= data
+      out = command "/usr/bin/pacmd list-sink-inputs"
+      return unless out
       inputs = parse_list_sink_inputs out
       exec "/usr/bin/pacmd move-sink-input #{input.index} #{@index}" for input in *inputs

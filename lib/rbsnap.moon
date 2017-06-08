@@ -14,10 +14,10 @@ port = os.getenv('RBSNAP_PORT')
       backup_every = 60*30
 
     backing_up = false
-    successful = true
+    success = true
     latest_backup_path = "#{backup}/.backup-latest"
 
-    last_status = -> successful
+    last_status = -> success
 
     can_backup = ->
       return false unless (backup and backup != "")
@@ -32,9 +32,11 @@ port = os.getenv('RBSNAP_PORT')
       secs = time_left_secs % 60
       return days, hours, mins, secs
 
+    local failed_at
     cached_time = 0
     cached_at = 0
     time_of_last_backup = ->
+      return failed_at if failed_at
       since_cached = os.time! - cached_at
       since_cached_time = os.time! - cached_time
       if since_cached > 60 or since_cached_time > 86400
@@ -65,12 +67,13 @@ port = os.getenv('RBSNAP_PORT')
     backup_now = ->
       return if backing_up
       backing_up = true
-      status = spawn "/usr/bin/sudo #{rbsnap} #{backup} #{remote} #{port}", on_err: log.error, on_read: log.info
+      failed_at = nil
+      success = spawn "/usr/bin/sudo #{rbsnap} #{backup} #{remote} #{port}", on_err: log.error, on_read: log.info
+      failed_at = os.time! unless success
       cached_time = 0
       cached_at = 0
       backing_up = false
-      successful = status == 0
-      successful
+      success
 
     return {
       backing_up: -> backing_up

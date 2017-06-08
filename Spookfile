@@ -10,8 +10,11 @@ _G.log = log
 gettimeofday = gettimeofday
 round = math.round
 S = require "syscall"
+:execute, :spawn = require 'process'
 :after = require 'moonbar_util'
 :format = string
+:concat, insert: append = table
+command = require 'command'
 
 cache_dir = "#{os.getenv('HOME')}/.cache/moonbar"
 fs.mkdir_p cache_dir
@@ -40,9 +43,6 @@ log.info "loading moonbar..."
 
 -- We don't want buffered io on stdout here
 io.stdout\setvbuf 'no'
-
-Types = require("syscall").t
-:execute, :spawn = require 'process'
 
 json = require "json"
 normal_color = "#FFFFFF"
@@ -106,9 +106,9 @@ block 'Pomodoro', ->
       curr = pomodoro[pomodoro_current]
       new_time, new_work = curr[1], curr[2]
       if work
-        os.execute "/usr/bin/notify-send -i #{break_icon} -u critical 'Break' 'Time for a #{new_time} min break!'"
+        execute "/usr/bin/notify-send -i #{break_icon} -u critical 'Break' 'Time for a #{new_time} min break!'"
       else
-        os.execute "/usr/bin/notify-send -i #{break_over_icon} 'Break over' 'The break is over'"
+        execute "/usr/bin/notify-send -i #{break_over_icon} 'Break over' 'The break is over'"
         pomodoro_paused = true
         text "Pomodoro: paused"
         label " "
@@ -141,6 +141,7 @@ home_backup = rbsnap_backup(remote, port, backup_path, backup_every)
 forced_backup = false
 grace_time = 10
 just_started = true
+failed = 0
 
 if home_backup.can_backup!
   block 'Backup', ->
@@ -180,13 +181,16 @@ if home_backup.can_backup!
         time_taken = "#{elapsed} seconds"
         grace_time = 20
         if success
+          failed = 0
           color good_color
           text "succeeded"
-          os.execute "/usr/bin/notify-send -i #{backup_complete_icon} 'Backup' 'Backup of #{backup_path} to #{remote} finished in #{time_taken}.'"
+          execute "/usr/bin/notify-send -i #{backup_complete_icon} 'Backup' 'Backup of #{backup_path} to #{remote} finished in #{time_taken}.'"
         else
+          failed += 1
+          grace_time *= failed
           text "failed"
           color critical_color
-          os.execute "/usr/bin/notify-send -i #{backup_fail_icon} -u critical 'Backup' 'Backup of #{backup_path} to #{remote} failed in #{time_taken}!'"
+          execute "/usr/bin/notify-send -i #{backup_fail_icon} -u critical 'Backup' 'Backup of #{backup_path} to #{remote} failed in #{time_taken}!'"
 
     on_left_click =>
       forced_backup = true
@@ -220,7 +224,7 @@ block 'Date', ->
   on_update =>
     text os.date("%b-%d %H:%M:%S")
   on_left_click =>
-    os.execute "gsimplecal &"
+    execute "gsimplecal"
 
 block 'External IP', ->
   ip = 'Unknown'
@@ -229,18 +233,15 @@ block 'External IP', ->
   interval 30.0
 
   on_update =>
-    out = ""
-    status = spawn "/usr/bin/dig TXT +short o-o.myaddr.l.google.com @ns1.google.com", on_err: log.error, on_read: (data) ->
-      log.debug data
-      out ..= data
-    return unless status == 0
+    out = command "/usr/bin/dig TXT +short o-o.myaddr.l.google.com @ns1.google.com"
+    return unless out
     ip = (out\gsub('"',''))\trim!
     text (ip != '' and ip or 'Unknown')
 
   on_left_click =>
     color warning_color
     text "<copied>"
-    os.execute "echo '#{ip}' | xclip -selection clipboard"
+    execute "echo '#{ip}' | xclip -selection clipboard"
     after 1.0, (t) ->
       color normal_color
       text ip
@@ -275,12 +276,7 @@ if fs.is_present '/usr/bin/acpi'
     charging  = ' '
     interval 30.0
     on_update =>
-      out = ""
-      status = spawn '/usr/bin/acpi -b', on_err: log.error, on_read: (data) ->
-        log.info data
-        out ..= data
-      return unless status == 0
-
+      out = command '/usr/bin/acpi -b'
       state, percent, time_remaining = battery_acpi out
       return unless state
 
@@ -292,7 +288,7 @@ if fs.is_present '/usr/bin/acpi'
         if percent < 10
           unless alert_sent
             alert_sent = true
-            os.execute "/usr/bin/notify-send 'Low Battery' 'There is only #{time_remaining} of use left'"
+            execute "/usr/bin/notify-send 'Low Battery' 'There is only #{time_remaining} of use left'"
           color critical_color
           label batt0
         else if percent < 25
@@ -319,30 +315,27 @@ if fs.is_present '/usr/bin/pacman'
     on_update =>
       color good_color
       label ''
-      text "Checking for updates..."
-      out = ""
-      status = spawn '/usr/bin/pacman -Qu', on_err: log.error, on_read: (data) ->
-        log.debug data
-        out ..= data
-
-      updates = if status > 0
-        0
-      else
+      text "Checking for out-of-date pkgs..."
+      updates = if out = command '/usr/bin/pacman -Qu'
         lines = #(out\trim!\split("\n"))
         tonumber(lines) or 0
+      else
+        0
 
       after 1.0, (t) ->
         if updates > 0
           label ' '
           color warning_color
-          text "#{updates} updates available"
+          text "#{updates} pkgs out-of-date"
         else
           label ' '
           color normal_color
-          text "No updates available"
+          text "All pkgs up-to-date"
 
     on_left_click =>
       if updates > 0
+        color warning_color
+        text "Upgrading pkgs..."
         spawn "/home/john/Local/bin/st -e sudo pacman -Syu", on_read: log.info, on_err: log.error
         @update!
       else
@@ -359,12 +352,7 @@ if fs.is_present '/usr/lib/update-notifier/apt-check'
       color good_color
       label ''
       text "Checking for updates..."
-      out = ""
-      status = spawn '/usr/lib/update-notifier/apt-check --human-readable', on_err: log.error, on_read: (data) ->
-        log.debug data
-        out ..= data
-      return unless status == 0
-
+      out = command '/usr/lib/update-notifier/apt-check --human-readable'
       updates = out\match("^%d+")
       updates = updates and tonumber(updates) or 0
 
@@ -427,6 +415,7 @@ for sink in *sinklist
       else if current
         color good_color
       else
+        log.info "normal because current: #{current}, muted: #{muted}"
         color normal_color
 
     on_left_click =>
@@ -463,12 +452,12 @@ restart_i3 = "/usr/local/bin/restart-i3"
 
 watch "#{os.getenv('HOME')}/.i3", ->
   on_changed '(.*config%..*)', (event, name) ->
-    os.execute genconf
-    os.execute restart_i3
+    execute genconf
+    execute restart_i3
 
 watch "#{os.getenv('HOME')}/Pictures", ->
   on_changed '(.*wallpaper%..*)', (event, name) ->
-    os.execute "feh --bg-fill #{name}"
+    execute "feh --bg-fill #{name}"
 
 write_blocks!
 
