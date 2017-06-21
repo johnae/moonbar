@@ -129,6 +129,33 @@ block 'Pomodoro', ->
         text "Pomodoro: break"
       color normal_color
 
+if api_key = os.getenv('SYNCTHING_API_KEY')
+
+  curl = "curl -H 'X-API-Key: #{api_key}' -s 'http://localhost:8384/rest/"
+  folders = curl .. "stats/folder' | jq -r '. | keys[]'"
+  state_for = (folder) ->
+    curl .. "db/status?folder=#{folder}' | jq -r '.state'"
+
+  block 'Syncthing', ->
+    label 'Syncthing: '
+    color normal_color
+    interval 5
+
+    on_update =>
+      for folder in *((command folders)\trim!\split '\n')
+        folder = folder\gsub '%s', '%%20'
+        out = command state_for(folder)
+        return unless out
+        state = out\trim!
+        if state != 'idle'
+          color warning_color
+          text state
+          return
+      color normal_color
+      text 'idle'
+
+    on_left_click => @update!
+
 backup_complete_icon = "#{os.getenv('HOME')}/Pictures/icons/essential/cloud-computing-2.svg"
 backup_fail_icon = "#{os.getenv('HOME')}/Pictures/icons/essential/cloud-computing-5.svg"
 remote = os.getenv('RBSNAP_REMOTE')
@@ -456,7 +483,7 @@ watch "#{os.getenv('HOME')}/.i3", ->
     execute restart_i3
 
 watch "#{os.getenv('HOME')}/Pictures", ->
-  on_changed '(.*wallpaper%..*)', (event, name) ->
+  on_changed '(.*/wallpaper%.jpg)', (event, name) ->
     execute "feh --bg-fill #{name}"
 
 write_blocks!
