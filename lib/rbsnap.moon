@@ -32,21 +32,23 @@ port = os.getenv('RBSNAP_PORT')
       secs = time_left_secs % 60
       return days, hours, mins, secs
 
-    local failed_at
-    cached_time = 0
-    cached_at = 0
+    local failed_at, cached_at, cached_time
     time_of_last_backup = ->
       return failed_at if failed_at
-      since_cached = os.time! - cached_at
-      since_cached_time = os.time! - cached_time
-      if since_cached > 60 or since_cached_time > 86400
-        cached_at = os.time!
-        cached_time = if fs.is_present latest_backup_path
-          log.info "Found #{latest_backup_path}, getting change time (time since change: #{since_cached_time}, since cache: #{since_cached})"
-          S.stat(latest_backup_path).ctime
-        else
-          log.info "Couldn't find #{latest_backup_path}, defaulting to a month ago (time since change: #{since_cached_time}, since cache: #{since_cached})"
-          os.time!-(86400*30) -- ~a month ago by default
+      if cached_at and cached_time
+        since_cached = os.time! - cached_at
+        since_cached_time = os.time! - cached_time
+        if since_cached < 60 and since_cached_time < 86400
+          return cached_time
+
+      cached_at = os.time!
+      cached_time = if fs.is_present latest_backup_path
+        log.info "Found #{latest_backup_path}, getting change time (time since change: #{since_cached_time}, since cache: #{since_cached})"
+        S.stat(latest_backup_path).ctime
+      else
+        log.info "Couldn't find #{latest_backup_path}, defaulting to a month ago (time since change: #{since_cached_time}, since cache: #{since_cached})"
+        os.time!-(86400*30) -- ~a month ago by default
+
       cached_time
 
     human_time_until_next_backup = ->
