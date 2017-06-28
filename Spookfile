@@ -132,8 +132,9 @@ block 'Pomodoro', ->
 if api_key = os.getenv('SYNCTHING_API_KEY')
 
   curl = "curl -H 'X-API-Key: #{api_key}' -s 'http://localhost:8384/rest/"
-  folders = curl .. "stats/folder' | jq -r '. | keys[]'"
+  list_folders = curl .. "system/config' | jq -r '[.folders[] | {id: .id, path: .path}]'"
   state_for = (folder) ->
+    folder = folder.id\gsub '%s', '%%20'
     curl .. "db/status?folder=#{folder}' | jq -r '.state'"
 
   block 'Syncthing', ->
@@ -142,8 +143,8 @@ if api_key = os.getenv('SYNCTHING_API_KEY')
     interval 5
 
     on_update =>
-      for folder in *((command folders)\trim!\split '\n')
-        folder = folder\gsub '%s', '%%20'
+      folders = json.decode(command list_folders)
+      for folder in *folders
         out = command state_for(folder)
         return unless out
         state = out\trim!
