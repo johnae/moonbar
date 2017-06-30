@@ -19,14 +19,12 @@ int sd_journal_perror(const char *message);
 log = (req_level, level, ...) ->
   return if req_level < level
   params = {}
-  msg = {}
-  for v in *{...}
-    append msg, tostring(format(v))
-  smsg = concat msg, ' '
-  libsystemd.sd_journal_send "MESSAGE=#{smsg}",
+  info = {}
+  append info, tostring(format(v)) for v in *{...}
+  libsystemd.sd_journal_send "MESSAGE=#{concat info, ' '}",
                              "PRIORITY=#{level}",
-                             "HOME=%s", os.getenv('HOME'),
-                             "TERM=%s", os.getenv('TERM'), nil
+                             "HOME=#{os.getenv('HOME')}",
+                             "TERM=#{os.getenv('TERM')}"
 
 EMERG = 0
 ALERT = 1
