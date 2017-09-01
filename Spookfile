@@ -364,7 +364,7 @@ if fs.is_present '/usr/bin/pacman'
       if updates > 0
         color warning_color
         text "Upgrading pkgs..."
-        spawn "/home/john/Local/bin/st -e sudo pacman -Syu", on_read: log.info, on_err: log.error
+        spawn "/home/john/Local/bin/alacritty -e sudo pacman -Syu", on_read: log.info, on_err: log.error
         @update!
       else
         @update!
@@ -484,8 +484,9 @@ watch "#{os.getenv('HOME')}/.i3", ->
     execute restart_i3
 
 watch "#{os.getenv('HOME')}/Pictures", ->
-  on_changed '(.*/wallpaper%.jpg)', (event, name) ->
-    execute "feh --bg-fill #{name}"
+  on_changed '.*%.jpg', (event) ->
+    log.info "Change wallpaper"
+    execute "feh --bg-fill #{os.getenv('HOME')}/Pictures/wallpaper.jpg"
 
 write_blocks!
 
