@@ -3,7 +3,6 @@ round = math.round
 insert: append = table
 :exec = require "process"
 command = require 'command'
-log = _G.log
 
 define 'PulseAudio', ->
   vol_cmd = (sink, val) -> "/usr/bin/pacmd set-sink-volume #{sink} #{val}"
@@ -28,7 +27,6 @@ define 'PulseAudio', ->
     inputs = {}
     for idx, line in ipairs lines
       if index = line\match 'index: (%d+)'
-        current = line\match('*%s+index') and true or false
         sink = lines[idx+4]
         input = :sink, :index
         append inputs, input
