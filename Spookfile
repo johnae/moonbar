@@ -16,6 +16,8 @@ S = require "syscall"
 :concat, insert: append = table
 command = require 'command'
 
+on_sway_wm = os.getenv('DESKTOP_SESSION')\match '^sway'
+
 cache_dir = "#{os.getenv('HOME')}/.cache/moonbar"
 fs.mkdir_p cache_dir
 cache_write = (data, name) ->
@@ -46,9 +48,9 @@ io.stdout\setvbuf 'no'
 
 json = require "json"
 normal_color = "#FFFFFF"
-warning_color = "#FFFC00"
-critical_color = "#FF0000"
-good_color = "#4CBB17"
+warning_color = "#fbdc1b"
+critical_color = "#d24939"
+good_color = "#78b037"
 
 -- begin infinite i3 json stream
 -- wrap it in a guard so that on spook
@@ -474,19 +476,32 @@ watch_file 'Spookfile', ->
     clear_blocklist!
     load_spookfile!
 
-i3conf = "#{os.getenv('HOME')}/.i3"
-genconf = "#{i3conf}/genconf"
-restart_i3 = "/usr/local/bin/restart-i3"
+if on_sway_wm
+  swayconf = "#{os.getenv('HOME')}/.config/sway"
 
-watch "#{os.getenv('HOME')}/.i3", ->
-  on_changed '(.*config%..*)', (event, name) ->
-    execute genconf
-    execute restart_i3
+  watch swayconf, ->
+    on_changed 'config', (event, name) ->
+      log.info "Reload swayconf"
+      execute "swaymsg reload"
 
-watch "#{os.getenv('HOME')}/Pictures", ->
-  on_changed '.*%.jpg', (event) ->
-    log.info "Change wallpaper"
-    execute "feh --bg-fill #{os.getenv('HOME')}/Pictures/wallpaper.jpg"
+  watch "#{os.getenv('HOME')}/Pictures", ->
+    on_changed '.*%.jpg', (event) ->
+      log.info "Change wallpaper"
+      execute "swaymsg output * #{os.getenv('HOME')}/Pictures/wallpaper.jpg fill"
+else
+  i3conf = "#{os.getenv('HOME')}/.i3"
+  genconf = "#{i3conf}/genconf"
+  restart_i3 = "/usr/local/bin/restart-i3"
+
+  watch i3conf, ->
+    on_changed '(.*config%..*)', (event, name) ->
+      execute genconf
+      execute restart_i3
+
+  watch "#{os.getenv('HOME')}/Pictures", ->
+    on_changed '.*%.jpg', (event) ->
+      log.info "Change wallpaper"
+      execute "feh --bg-fill #{os.getenv('HOME')}/Pictures/wallpaper.jpg"
 
 write_blocks!
 
