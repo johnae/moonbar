@@ -140,7 +140,7 @@ if api_key = os.getenv('SYNCTHING_API_KEY')
     curl .. "db/status?folder=#{folder}' | jq -r '.state'"
 
   block 'Syncthing', ->
-    label 'Syncthing: '
+    label 'Sync: '
     color normal_color
     interval 5
 
@@ -345,7 +345,7 @@ if fs.is_present '/usr/bin/pacman'
     on_update =>
       color good_color
       label ''
-      text "Checking for out-of-date pkgs..."
+      text "Looking for updates..."
       updates = if out = command '/usr/bin/pacman -Qu'
         lines = #(out\trim!\split("\n"))
         tonumber(lines) or 0
@@ -360,12 +360,12 @@ if fs.is_present '/usr/bin/pacman'
         else
           label ' '
           color normal_color
-          text "All pkgs up-to-date"
+          text "System up-to-date"
 
     on_left_click =>
       if updates > 0
         color warning_color
-        text "Upgrading pkgs..."
+        text "Updating pkgs..."
         spawn "/home/john/Local/bin/alacritty -e sudo pacman -Syu", on_read: log.info, on_err: log.error
         @update!
       else
