@@ -492,11 +492,14 @@ else
   i3conf = "#{os.getenv('HOME')}/.i3"
   genconf = "#{i3conf}/genconf"
   restart_i3 = "/usr/local/bin/restart-i3"
+  restart_compton = "killall compton && #{i3conf}/compton"
 
   watch i3conf, ->
     on_changed '(.*config%..*)', (event, name) ->
       execute genconf
       execute restart_i3
+    on_changed '(.*compton%.conf)', (event, name) ->
+      execute restart_compton
 
   watch "#{os.getenv('HOME')}/Pictures", ->
     on_changed '.*%.jpg', (event) ->
