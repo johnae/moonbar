@@ -67,69 +67,69 @@ write_blocks = ->
   io.stdout\write ",#{json.encode(data)}", "\n"
 
 -- 25 x 4 - 3 5 min breaks, 4th break is 15 min
-pomodoro = {
-  {25, true}
-  {5, false}
-  {25, true}
-  {5, false}
-  {25, true}
-  {5, false}
-  {25, true}
-  {15, false}
-}
-pomodoro_time = 0
-pomodoro_current = 1
-pomodoro_paused = true
-
-break_icon = "#{os.getenv('HOME')}/Pictures/icons/essential/hold.svg"
-break_over_icon = "#{os.getenv('HOME')}/Pictures/icons/essential/like.svg"
-block 'Pomodoro', ->
-  interval 60.0
-  label " "
-  text "Pomodoro: paused"
-  on_update =>
-    return if pomodoro_paused
-    color normal_color
-    pomodoro_time += 1
-    curr = pomodoro[pomodoro_current]
-    time, work = curr[1], curr[2]
-    if work
-      label " "
-      text "Pomodoro: work"
-    else
-      color good_color
-      label " "
-      text "Pomodoro: break (#{time} min)"
-    if pomodoro_time >= time
-      pomodoro_current += 1
-      pomodoro_time = 0
-      if pomodoro_current >= #pomodoro
-        pomodoro_current = 1
-      curr = pomodoro[pomodoro_current]
-      new_time, new_work = curr[1], curr[2]
-      if work
-        execute "/usr/bin/notify-send -i #{break_icon} -u critical 'Break' 'Time for a #{new_time} min break!'"
-      else
-        execute "/usr/bin/notify-send -i #{break_over_icon} 'Break over' 'The break is over'"
-        pomodoro_paused = true
-        text "Pomodoro: paused"
-        label " "
-  on_left_click =>
-    return unless pomodoro_paused
-    color warning_color
-    pomodoro_paused = false
-    text "Pomodoro: start"
-    after 1.0, (t) ->
-      curr = pomodoro[pomodoro_current]
-      time, work = curr[1], curr[2]
-      if work
-        label " "
-        text "Pomodoro: work"
-      else
-        -- we shouldn't ever get here as it is
-        label " "
-        text "Pomodoro: break"
-      color normal_color
+--pomodoro = {
+--  {25, true}
+--  {5, false}
+--  {25, true}
+--  {5, false}
+--  {25, true}
+--  {5, false}
+--  {25, true}
+--  {15, false}
+--}
+--pomodoro_time = 0
+--pomodoro_current = 1
+--pomodoro_paused = true
+--
+--break_icon = "#{os.getenv('HOME')}/Pictures/icons/essential/hold.svg"
+--break_over_icon = "#{os.getenv('HOME')}/Pictures/icons/essential/like.svg"
+--block 'Pomodoro', ->
+--  interval 60.0
+--  label " "
+--  text "Pomodoro: paused"
+--  on_update =>
+--    return if pomodoro_paused
+--    color normal_color
+--    pomodoro_time += 1
+--    curr = pomodoro[pomodoro_current]
+--    time, work = curr[1], curr[2]
+--    if work
+--      label " "
+--      text "Pomodoro: work"
+--    else
+--      color good_color
+--      label " "
+--      text "Pomodoro: break (#{time} min)"
+--    if pomodoro_time >= time
+--      pomodoro_current += 1
+--      pomodoro_time = 0
+--      if pomodoro_current >= #pomodoro
+--        pomodoro_current = 1
+--      curr = pomodoro[pomodoro_current]
+--      new_time, new_work = curr[1], curr[2]
+--      if work
+--        execute "/usr/bin/notify-send -i #{break_icon} -u critical 'Break' 'Time for a #{new_time} min break!'"
+--      else
+--        execute "/usr/bin/notify-send -i #{break_over_icon} 'Break over' 'The break is over'"
+--        pomodoro_paused = true
+--        text "Pomodoro: paused"
+--        label " "
+--  on_left_click =>
+--    return unless pomodoro_paused
+--    color warning_color
+--    pomodoro_paused = false
+--    text "Pomodoro: start"
+--    after 1.0, (t) ->
+--      curr = pomodoro[pomodoro_current]
+--      time, work = curr[1], curr[2]
+--      if work
+--        label " "
+--        text "Pomodoro: work"
+--      else
+--        -- we shouldn't ever get here as it is
+--        label " "
+--        text "Pomodoro: break"
+--      color normal_color
 
 if api_key = os.getenv('SYNCTHING_API_KEY')
 
