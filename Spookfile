@@ -13,35 +13,18 @@ S = require "syscall"
 :execute, :spawn = require 'process'
 :after = require 'moonbar_util'
 :format = string
-:concat, insert: append = table
+insert: append = table
 command = require 'command'
 
 on_sway_wm = os.getenv('DESKTOP_SESSION')\match '^sway'
-
-cache_dir = "#{os.getenv('HOME')}/.cache/moonbar"
-fs.mkdir_p cache_dir
-cache_write = (data, name) ->
-  path = "#{cache_dir}/#{name}"
-  f = io.open path, "w"
-  if f
-    f\write data
-    f\close!
-    return true
-  false
-
-cache_read = (name) ->
-  path = "#{cache_dir}/#{name}"
-  f = io.open path, "r"
-  if f
-    content = f\read!
-    f\close!
-    return content, true
-  nil, false
 
 -- How much log output can you handle? (ERR, WARN, INFO, DEBUG)
 log_level "INFO"
 
 log.info "loading moonbar..."
+
+restart_requested = false
+request_restart = -> restart_requested = true
 
 -- We don't want buffered io on stdout here
 io.stdout\setvbuf 'no'
@@ -55,7 +38,8 @@ good_color = "#78b037"
 -- begin infinite i3 json stream
 -- wrap it in a guard so that on spook
 -- hot reload we don't output this again
-unless _G.INIT
+reloaded = os.getenv('__SPOOK_RELOADED')
+unless (reloaded or _G.INIT)
   io.stdout\write '{"version":1,"click_events":true}', "\n"
   io.stdout\write "[[]", "\n"
   _G.INIT = true
@@ -63,73 +47,8 @@ unless _G.INIT
 :block, :blocklist, :named_blocks, :clear_blocklist = require 'block'
 
 write_blocks = ->
-  data = [block\to_table! for block in *blocklist]
+  data = [ablock\to_table! for ablock in *blocklist]
   io.stdout\write ",#{json.encode(data)}", "\n"
-
--- 25 x 4 - 3 5 min breaks, 4th break is 15 min
---pomodoro = {
---  {25, true}
---  {5, false}
---  {25, true}
---  {5, false}
---  {25, true}
---  {5, false}
---  {25, true}
---  {15, false}
---}
---pomodoro_time = 0
---pomodoro_current = 1
---pomodoro_paused = true
---
---break_icon = "#{os.getenv('HOME')}/Pictures/icons/essential/hold.svg"
---break_over_icon = "#{os.getenv('HOME')}/Pictures/icons/essential/like.svg"
---block 'Pomodoro', ->
---  interval 60.0
---  label " "
---  text "Pomodoro: paused"
---  on_update =>
---    return if pomodoro_paused
---    color normal_color
---    pomodoro_time += 1
---    curr = pomodoro[pomodoro_current]
---    time, work = curr[1], curr[2]
---    if work
---      label " "
---      text "Pomodoro: work"
---    else
---      color good_color
---      label " "
---      text "Pomodoro: break (#{time} min)"
---    if pomodoro_time >= time
---      pomodoro_current += 1
---      pomodoro_time = 0
---      if pomodoro_current >= #pomodoro
---        pomodoro_current = 1
---      curr = pomodoro[pomodoro_current]
---      new_time, new_work = curr[1], curr[2]
---      if work
---        execute "/usr/bin/notify-send -i #{break_icon} -u critical 'Break' 'Time for a #{new_time} min break!'"
---      else
---        execute "/usr/bin/notify-send -i #{break_over_icon} 'Break over' 'The break is over'"
---        pomodoro_paused = true
---        text "Pomodoro: paused"
---        label " "
---  on_left_click =>
---    return unless pomodoro_paused
---    color warning_color
---    pomodoro_paused = false
---    text "Pomodoro: start"
---    after 1.0, (t) ->
---      curr = pomodoro[pomodoro_current]
---      time, work = curr[1], curr[2]
---      if work
---        label " "
---        text "Pomodoro: work"
---      else
---        -- we shouldn't ever get here as it is
---        label " "
---        text "Pomodoro: break"
---      color normal_color
 
 if api_key = os.getenv('SYNCTHING_API_KEY')
 
@@ -169,8 +88,8 @@ backup_every = 60*30 -- 30 minutes
 backup_path = "/home"
 home_backup = rbsnap_backup(remote, port, backup_path, backup_every)
 forced_backup = false
-grace_time = 10
-just_started = true
+grace_time = os.getenv('__SPOOK_RELOADED') and 0 or 10
+just_started = os.getenv('__SPOOK_RELOADED') and true or false
 failed = 0
 
 if home_backup.can_backup!
@@ -412,8 +331,7 @@ update_pulse_blocks = -> block\update! for block in *pulse_blocks
 sinkupdater = timer 5.0, (t) ->
   current_sink_list = Pulse\list_sinks!
   if #current_sink_list != #sinklist
-    clear_blocklist!
-    load_spookfile!
+    request_restart!
   t\again!
 
 for sink in *sinklist
@@ -473,8 +391,7 @@ for sink in *sinklist
 -- spook itself can be reconfigured without restarting it.
 watch_file 'Spookfile', ->
   on_changed (event) ->
-    clear_blocklist!
-    load_spookfile!
+    request_restart!
 
 if on_sway_wm
   swayconf = "#{os.getenv('HOME')}/.config/sway"
@@ -506,9 +423,22 @@ else
       log.info "Change wallpaper"
       execute "feh --bg-fill #{os.getenv('HOME')}/Pictures/wallpaper.jpg"
 
-write_blocks!
+unless os.getenv('__SPOOK_RELOADED')
+  write_blocks!
 
-json_writer = every 0.5, (t) -> write_blocks!
+wait_iterations = os.getenv('__SPOOK_RELOADED') and 5 or 0
+json_writer = every 0.5, (t) ->
+  if wait_iterations > 0
+    wait_iterations -= 1
+    return
+  write_blocks!
+
+restarter = every 1.0, ->
+  return if home_backup.backing_up!
+  if restart_requested
+    restart_requested = false
+    S.setenv('__SPOOK_RELOADED', 'yes', true)
+    reload_spook!
 
 stdin_reader = on_read S.stdin, (r, fd) ->
   data = fd\read!
