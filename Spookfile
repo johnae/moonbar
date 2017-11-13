@@ -255,6 +255,7 @@ if fs.is_present '/usr/bin/acpi'
         color good_color
         label charging
 
+updating_packages = false
 if fs.is_present '/usr/bin/pacman'
   updates = 0
   update_block = block 'Updates', ->
@@ -285,7 +286,9 @@ if fs.is_present '/usr/bin/pacman'
       if updates > 0
         color warning_color
         text "Updating pkgs..."
+        updating_packages = true
         spawn "/home/john/Local/bin/alacritty -e sudo pacman -Syu", on_read: log.info, on_err: log.error
+        updating_packages = false
         @update!
       else
         @update!
@@ -435,6 +438,7 @@ json_writer = every 0.5, (t) ->
 
 restarter = every 1.0, ->
   return if home_backup.backing_up!
+  return if updating_packages
   if restart_requested
     restart_requested = false
     S.setenv('__SPOOK_RELOADED', 'yes', true)
