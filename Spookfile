@@ -35,11 +35,14 @@ warning_color = "#fbdc1b"
 critical_color = "#d24939"
 good_color = "#78b037"
 
+was_reloaded = -> os.getenv('__SPOOK_RELOADED') == 'yes'
+is_reloaded = ->  S.setenv('__SPOOK_RELOADED', 'yes', true)
+is_initialized = -> was_reloaded! or _G.INIT
+
 -- begin infinite i3 json stream
 -- wrap it in a guard so that on spook
 -- hot reload we don't output this again
-reloaded = os.getenv('__SPOOK_RELOADED')
-unless (reloaded or _G.INIT)
+unless is_initialized!
   io.stdout\write '{"version":1,"click_events":true}', "\n"
   io.stdout\write "[[]", "\n"
   _G.INIT = true
@@ -88,9 +91,8 @@ backup_every = 60*30 -- 30 minutes
 backup_path = "/home"
 home_backup = rbsnap_backup(remote, port, backup_path, backup_every)
 forced_backup = false
-grace_time = os.getenv('__SPOOK_RELOADED') and 0 or 20
-just_started = not os.getenv('__SPOOK_RELOADED')
-failed = 0
+grace_time = was_reloaded! and 0 or 20
+just_started = not was_reloaded!
 
 if home_backup.can_backup!
   block 'Backup', ->
@@ -112,7 +114,6 @@ if home_backup.can_backup!
 
     on_update =>
       grace_time -= 1 if grace_time > 0
-      grace_time = 0 if grace_time < 0
       if just_started
         text "grace time #{grace_time}s"
       return if grace_time > 0
@@ -130,13 +131,10 @@ if home_backup.can_backup!
         time_taken = "#{elapsed} seconds"
         grace_time = 20
         if success
-          failed = 0
           color good_color
           text "succeeded"
           execute "/usr/bin/notify-send -i #{backup_complete_icon} 'Backup' 'Backup of #{backup_path} to #{remote} finished in #{time_taken}.'"
         else
-          failed += 1
-          grace_time *= failed
           text "failed"
           color critical_color
           execute "/usr/bin/notify-send -i #{backup_fail_icon} -u critical 'Backup' 'Backup of #{backup_path} to #{remote} failed in #{time_taken}!'"
@@ -426,10 +424,9 @@ else
       log.info "Change wallpaper"
       execute "feh --bg-fill #{os.getenv('HOME')}/Pictures/wallpaper.jpg"
 
-unless os.getenv('__SPOOK_RELOADED')
-  write_blocks!
+write_blocks! unless was_reloaded!
 
-wait_iterations = os.getenv('__SPOOK_RELOADED') and 5 or 0
+wait_iterations = was_reloaded! and 2 or 0
 json_writer = every 0.5, (t) ->
   if wait_iterations > 0
     wait_iterations -= 1
@@ -441,7 +438,7 @@ restarter = every 1.0, ->
   return if updating_packages
   if restart_requested
     restart_requested = false
-    S.setenv('__SPOOK_RELOADED', 'yes', true)
+    is_reloaded!
     reload_spook!
 
 stdin_reader = on_read S.stdin, (r, fd) ->
