@@ -4,7 +4,7 @@ moonscript = require 'moonscript'
 package.path = "#{package.path};lib/?.lua;lib/?/init.lua"
 package.moonpath = moonscript.create_moonpath(package.path)
 insert: append = table
-load_spookfile = _G.load_spookfile
+reload_spook = _G.reload_spook
 log = require 'systemd-journal'
 _G.log = log
 gettimeofday = gettimeofday
@@ -44,7 +44,7 @@ unless (reloaded or _G.INIT)
   io.stdout\write "[[]", "\n"
   _G.INIT = true
 
-:block, :blocklist, :named_blocks, :clear_blocklist = require 'block'
+:block, :blocklist, :named_blocks = require 'block'
 
 write_blocks = ->
   data = [ablock\to_table! for ablock in *blocklist]
@@ -88,8 +88,8 @@ backup_every = 60*30 -- 30 minutes
 backup_path = "/home"
 home_backup = rbsnap_backup(remote, port, backup_path, backup_every)
 forced_backup = false
-grace_time = os.getenv('__SPOOK_RELOADED') and 0 or 10
-just_started = os.getenv('__SPOOK_RELOADED') and true or false
+grace_time = os.getenv('__SPOOK_RELOADED') and 0 or 20
+just_started = not os.getenv('__SPOOK_RELOADED')
 failed = 0
 
 if home_backup.can_backup!
