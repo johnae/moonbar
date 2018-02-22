@@ -413,10 +413,12 @@ else
   restart_compton = "killall compton && #{i3conf}/compton"
 
   watch i3conf, ->
-    on_changed '(.*config%..*)', (event, name) ->
+    on_changed '(.*)/(.*config%..*)', (event, dir, name) ->
+      return if name\sub(1,1) == '.'
       execute genconf
       execute restart_i3
-    on_changed '(.*compton%.conf)', (event, name) ->
+    on_changed '(.*compton%.conf)', (event, dir, name) ->
+      return if name\sub(1,1) == '.'
       execute restart_compton
 
   watch "#{os.getenv('HOME')}/Pictures", ->
