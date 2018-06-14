@@ -5,8 +5,8 @@ insert: append = table
 command = require 'command'
 
 define 'PulseAudio', ->
-  vol_cmd = (sink, val) -> "/usr/bin/pacmd set-sink-volume #{sink} #{val}"
-  mute_cmd = (sink, val) -> "/usr/bin/pacmd set-sink-mute #{sink} #{val}"
+  vol_cmd = (sink, val) -> "pacmd set-sink-volume #{sink} #{val}"
+  mute_cmd = (sink, val) -> "pacmd set-sink-mute #{sink} #{val}"
 
   parse_list_sinks = (str) ->
     lines = str\split "\n"
@@ -39,13 +39,13 @@ define 'PulseAudio', ->
       -- is intended to be used in a setup context
       -- and so the coroutine/event system isn't
       -- yet initialized
-      reader = io.popen "/usr/bin/pacmd list-sinks"
+      reader = io.popen "pacmd list-sinks"
       out = reader\read '*a'
       parse_list_sinks out
 
   properties
     is_current: =>
-      out = command "/usr/bin/pacmd list-sinks"
+      out = command "pacmd list-sinks"
       return false unless out
       sink_list = parse_list_sinks out
       for sink in *sink_list
@@ -54,7 +54,7 @@ define 'PulseAudio', ->
 
     volume:
       get: =>
-        out = command "/usr/bin/pacmd dump"
+        out = command "pacmd dump"
         return unless out
         for sink, value in out\gmatch 'set%-sink%-volume ([^%s]+) (0x%x+)'
           if sink == @name
@@ -67,7 +67,7 @@ define 'PulseAudio', ->
         exec vol_cmd(@name, vol)
 
     mute:=>
-      out = command "/usr/bin/pacmd dump"
+      out = command "pacmd dump"
       return unless out
       for sink, value in out\gmatch 'set%-sink%-mute ([^%s]+) (%a+)'
         if sink == @name
@@ -85,8 +85,8 @@ define 'PulseAudio', ->
       exec mute_cmd(@name, val)
 
     make_current: =>
-      exec "/usr/bin/pacmd set-default-sink #{@name}"
-      out = command "/usr/bin/pacmd list-sink-inputs"
+      exec "pacmd set-default-sink #{@name}"
+      out = command "pacmd list-sink-inputs"
       return unless out
       inputs = parse_list_sink_inputs out
-      exec "/usr/bin/pacmd move-sink-input #{input.index} #{@index}" for input in *inputs
+      exec "pacmd move-sink-input #{input.index} #{@index}" for input in *inputs

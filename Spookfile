@@ -16,7 +16,16 @@ S = require "syscall"
 insert: append = table
 command = require 'command'
 
-on_sway_wm = os.getenv('DESKTOP_SESSION')\match '^sway'
+desktop_session = os.getenv('DESKTOP_SESSION') or ''
+on_sway_wm = desktop_session\match '^sway'
+
+has_executable = (name) ->
+  paths = os.getenv("PATH")\split ":"
+  for path in *paths
+    if fs.is_dir path
+      for entry, attr in fs.dirtree(path)
+        return true if fs.basename(entry) == name
+  false
 
 -- How much log output can you handle? (ERR, WARN, INFO, DEBUG)
 log_level "INFO"
@@ -133,11 +142,11 @@ if home_backup.can_backup!
         if success
           color good_color
           text "succeeded"
-          execute "/usr/bin/notify-send -i #{backup_complete_icon} 'Backup' 'Backup of #{backup_path} to #{remote} finished in #{time_taken}.'"
+          execute "notify-send -i #{backup_complete_icon} 'Backup' 'Backup of #{backup_path} to #{remote} finished in #{time_taken}.'"
         else
           text "failed"
           color critical_color
-          execute "/usr/bin/notify-send -i #{backup_fail_icon} -u critical 'Backup' 'Backup of #{backup_path} to #{remote} failed in #{time_taken}!'"
+          execute "notify-send -i #{backup_fail_icon} -u critical 'Backup' 'Backup of #{backup_path} to #{remote} failed in #{time_taken}!'"
 
     on_left_click =>
       forced_backup = true
@@ -180,7 +189,7 @@ block 'External IP', ->
   interval 30.0
 
   on_update =>
-    out = command "/usr/bin/dig TXT +short o-o.myaddr.l.google.com @ns1.google.com"
+    out = command "dig TXT +short o-o.myaddr.l.google.com @ns1.google.com"
     return unless out
     ip = (out\gsub('"',''))\trim!
     text (ip != '' and ip or 'Unknown')
@@ -209,7 +218,7 @@ block 'Cpu Usage', ->
       color critical_color
     text "#{format('%5.1f', cpu)}%"
 
-if fs.is_present '/usr/bin/acpi'
+if has_executable 'acpi'
   battery_acpi = require 'battery_acpi'
   block 'Battery', ->
     local time_remaining, alert_sent
@@ -223,7 +232,7 @@ if fs.is_present '/usr/bin/acpi'
     charging  = ' '
     interval 30.0
     on_update =>
-      out = command '/usr/bin/acpi -b'
+      out = command 'acpi -b'
       state, percent, time_remaining = battery_acpi out
       return unless state
 
@@ -235,7 +244,7 @@ if fs.is_present '/usr/bin/acpi'
         if percent < 10
           unless alert_sent
             alert_sent = true
-            execute "/usr/bin/notify-send 'Low Battery' 'There is only #{time_remaining} of use left'"
+            execute "notify-send 'Low Battery' 'There is only #{time_remaining} of use left'"
           color critical_color
           label batt0
         else if percent < 25
@@ -254,7 +263,7 @@ if fs.is_present '/usr/bin/acpi'
         label charging
 
 updating_packages = false
-if fs.is_present '/usr/bin/pacman'
+if has_executable 'pacman'
   updates = 0
   update_block = block 'Updates', ->
     color normal_color
@@ -264,7 +273,7 @@ if fs.is_present '/usr/bin/pacman'
       color good_color
       label ''
       text "Looking for updates..."
-      updates = if out = command '/usr/bin/pacman -Qu'
+      updates = if out = command 'pacman -Qu'
         lines = #(out\trim!\split("\n"))
         tonumber(lines) or 0
       else
