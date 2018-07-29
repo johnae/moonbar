@@ -337,6 +337,11 @@ round = math.round
 sinklist = Pulse\list_sinks!
 pulse_blocks = {}
 update_pulse_blocks = -> block\update! for block in *pulse_blocks
+current_sink = ->
+  for sink in *sinklist
+    p = Pulse.new sink
+    return p if p.is_current
+  return
 
 sinkupdater = timer 5.0, (t) ->
   current_sink_list = Pulse\list_sinks!
@@ -451,6 +456,25 @@ restarter = every 1.0, ->
     restart_requested = false
     is_reloaded!
     reload_spook!
+
+on_signal 'HUP', ->
+  current = current_sink!
+  if current
+    current\toggle_mute!
+    update_pulse_blocks!
+    write_blocks!
+on_signal 'USR1', ->
+  current = current_sink!
+  if current
+    current.volume = current.volume + 0.02
+    update_pulse_blocks!
+    write_blocks!
+on_signal 'USR2', ->
+  current = current_sink!
+  if current
+    current.volume = current.volume - 0.02
+    update_pulse_blocks!
+    write_blocks!
 
 stdin_reader = on_read S.stdin, (r, fd) ->
   data = fd\read!
