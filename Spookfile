@@ -62,6 +62,27 @@ write_blocks = ->
   data = [ablock\to_table! for ablock in *blocklist]
   io.stdout\write ",#{json.encode(data)}", "\n"
 
+
+block 'IdleInhibit', ->
+  idle_inhibit_file = "#{os.getenv('HOME')}/.inhibit-idle"
+  text 'Inhibit idle'
+  color normal_color
+  interval 5
+  on_update =>
+    if fs.is_present idle_inhibit_file
+      text 'Idle inhibited'
+      color warning_color
+    else
+      text 'Inhibit idle'
+      color normal_color
+
+  on_left_click =>
+    if fs.is_present idle_inhibit_file
+      os.remove idle_inhibit_file
+    else
+      io.open(idle_inhibit_file, "w")\close!
+    @update!
+
 if api_key = os.getenv('SYNCTHING_API_KEY')
 
   curl = "curl -H 'X-API-Key: #{api_key}' -s 'http://localhost:8384/rest/"
@@ -378,7 +399,6 @@ for sink in *sinklist
       else if current
         color good_color
       else
-        log.info "normal because current: #{current}, muted: #{muted}"
         color normal_color
 
     on_left_click =>
@@ -408,37 +428,15 @@ watch_file 'Spookfile', ->
   on_changed (event) ->
     request_restart!
 
-if on_sway_wm
-  swayconf = "#{os.getenv('HOME')}/.config/sway"
-
-  watch swayconf, ->
-    on_changed 'config', (event, name) ->
-      log.info "Reload swayconf"
-      execute "swaymsg reload"
-
-  watch "#{os.getenv('HOME')}/Pictures", ->
-    on_changed '.*%.jpg', (event) ->
-      log.info "Change wallpaper"
-      execute "swaymsg output * #{os.getenv('HOME')}/Pictures/wallpaper.jpg fill"
-else
-  i3conf = "#{os.getenv('HOME')}/.i3"
-  genconf = "#{i3conf}/genconf"
-  restart_i3 = "/usr/local/bin/restart-i3"
-  restart_compton = "killall compton && #{i3conf}/compton"
-
-  watch i3conf, ->
-    on_changed '(.*)/(.*config%..*)', (event, dir, name) ->
-      return if name\sub(1,1) == '.'
-      execute genconf
-      execute restart_i3
-    on_changed '(.*compton%.conf)', (event, dir, name) ->
-      return if name\sub(1,1) == '.'
-      execute restart_compton
-
-  watch "#{os.getenv('HOME')}/Pictures", ->
-    on_changed '.*%.jpg', (event) ->
-      log.info "Change wallpaper"
-      execute "feh --bg-fill #{os.getenv('HOME')}/Pictures/wallpaper.jpg"
+watch "#{os.getenv('HOME')}/Sync", ->
+  on_deleted '(.*)/Sync/(.*)', (event, dir, name) ->
+    bn = fs.basename name
+    unless bn\match('^%..*')
+      execute "notify-desktop Sync \"~/Sync/#{name} DELETED\" >/dev/null"
+  on_changed '(.*)/Sync/(.*)', (event, dir, name) ->
+    bn = fs.basename name
+    unless bn\match('^%..*')
+      execute "notify-desktop Sync \"~/Sync/#{name} UPDATED\" >/dev/null"
 
 write_blocks! unless was_reloaded!
 
